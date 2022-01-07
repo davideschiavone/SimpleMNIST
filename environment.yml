@@ -1,0 +1,15 @@
+name: SimpleMNIST
+channels:
+  - conda-forge
+  - brian-team
+  - defaults
+dependencies:
+  - brian2
+  - brian2tools
+  - matplotlib
+  - numpy
+  - keras
+  - tensorflow
+  - python=3.8.12
+
+
