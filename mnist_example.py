@@ -30,9 +30,19 @@ start_scope()
 
 np.random.seed(2021)
 
-
+use_only_1_and_2 = True
 
 (train_X, train_y), (test_X, test_y) = mnist.load_data()
+
+classes       = np.arange(0,10)
+classes_color = []
+
+if(use_only_1_and_2):
+    train_X = train_X[(train_y==1) | (train_y==2)]
+    train_y = train_y[(train_y==1) | (train_y==2)]
+    test_X  = test_X[(test_y==1) | (test_y==2)]
+    test_y  = test_y[(test_y==1) | (test_y==2)]
+    classes = np.arange(1,3)
 
 train_X_flat = np.reshape(train_X,(train_X.shape[0], 28*28))
 test_X_flat = np.reshape(test_X,(test_X.shape[0], 28*28))
@@ -41,6 +51,8 @@ plt_example_mnist = False
 
 X_size          = 28*28
 X_Train_Samples = train_X.shape[0]
+
+print("train_X contans " + str(X_Train_Samples))
 
 if(plt_example_mnist):
     plt.figure()
@@ -59,7 +71,7 @@ for i in range(10):
 
 if(plt_example_mnist):
     #print the first 9 values
-    for k in range(10):
+    for k in classes:
         plt.figure()
         for i in range(9):
             plt.subplot(330 + 1 + i)
@@ -69,6 +81,7 @@ if(plt_example_mnist):
 if(plt_example_mnist):
     plt.show()
 
+
 '''
 we want to have 60FPS
 thus, each frame must take 16.6ms, here we use 15ms
@@ -76,8 +89,7 @@ thus, each frame must take 16.6ms, here we use 15ms
 and 5ms for the resting
 '''
 
-single_example_time   = 25*ms
-space_between_samples = 25 #included the previous 10ms
+single_example_time   = 25
 
 taupre = 2 * ms
 taupost = 5 * ms
@@ -99,43 +111,17 @@ eqs_reset = '''
 
 Threshold = 0.8
 
-
-n0_s_list        = []
-n0_t_list        = []
-n0_mon_list      = []
-n1_mon_list      = []
-n1_state_list    = []
-s1_ex_state_list = []
-
-ts_time = 0
-Train_Samples = X_Train_Samples
-Train_Samples = 3
-
-
 n0_debug = False
 
-my_train_X_flat  = train_X_flat
-
-my_train_X_flat1 = train_X_flat[train_y==1]
-my_train_X_flat2 = train_X_flat[train_y==2]
-my_train_X_flat1 = my_train_X_flat1[0:3]
-my_train_X_flat2 = my_train_X_flat2[0:3]
-my_train_X_flat  = np.concatenate((my_train_X_flat1, my_train_X_flat2))
 
 net     = Network()
-N0      = SpikeGeneratorGroup(X_size, [0], [0]*ms)
-N0mon   = SpikeMonitor(N0)
-net.add(N0)
-net.add(N0mon)
 
-N1      = NeuronGroup(2, eqs, threshold='v>dynThreshold', reset=eqs_reset, refractory=10*ms, method='exact')
-N1mon   = SpikeMonitor(N1)
-N1state = StateMonitor(N1, ['v', 'dynThreshold'], record=True)
+N0_Neurons = X_size; #28x28
+N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
-net.add(N1)
-net.add(N1mon)
-net.add(N1state)
+N1_Neurons = 2;
 
+N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>dynThreshold', reset=eqs_reset, refractory=10*ms, method='exact')
 
 N1.tau  = [5, 5]*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
@@ -165,19 +151,29 @@ S = Synapses(N0, N1,
                     ''',
                     method='linear')
 
-S.connect(True)
-S.w = (Threshold+0.05)/(X_size/16) #as soon as it spikes, the output spikes too
+#all N0 neurons connected to N1::0
+i0 = np.arange(0,N0_Neurons)
+j0 = np.ones(size(i0))*0
+
+i1 = np.arange(0,N0_Neurons)
+j1 = np.ones(size(i1))*1
+
+i = np.concatenate((i0, i1))
+j = np.concatenate((j0, j1))
+j = j.astype(int)
+
+S.connect(i=i, j=j)
+
+for n0 in range(N0_Neurons):
+    for n1 in range(N1_Neurons):
+        S.w[n0,n1] = (Threshold+0.05)/(X_size/16)*(1.0 + np.random.random_sample()/10) #as soon as it spikes, the output spikes too
+
 S.wmax[:, 0] = 1
 S.wmin[:, 0] = 0
 S.wmax[:, 1] = 1
 S.wmin[:, 1] = 0
 S.delay[:, 0] = 1*ms
 S.delay[:, 1] = 2*ms
-
-Sstate  = StateMonitor(S, ['w', 'apre', 'apost'], record=True)
-
-net.add(S)
-net.add(Sstate)
 
 
 S2 = Synapses(N1, N1,
@@ -194,12 +190,34 @@ S2.w[0, 1] = -1
 S2.w[1, 0] = -1
 S2.delay[0, 1] = 0*ms
 S2.delay[1, 0] = 0*ms
-S2state  = StateMonitor(S2, ['w'], record=True)
 
+net.add(N0)
+net.add(N1)
+net.add(S)
 net.add(S2)
+
+N0mon    = SpikeMonitor(N0)
+N1mon    = SpikeMonitor(N1)
+N1state  = StateMonitor(N1, ['v', 'dynThreshold'], record=True)
+Sstate   = StateMonitor(S, ['w', 'apre', 'apost'], record=True)
+S2state  = StateMonitor(S2, ['w'], record=True)
+net.add(N0mon)
+net.add(N1mon)
+net.add(N1state)
+net.add(Sstate)
 net.add(S2state)
 
-ts = 0
+
+#simulate only first 6 samples
+lim_num_samples = 6
+my_train_X_flat  = train_X_flat[0:lim_num_samples];
+
+print("Network created.... Start training it with " + str(lim_num_samples) + " samples")
+
+ts_time = 0
+n0_s_list = []
+n0_t_list = []
+
 for x_flat in my_train_X_flat:
 
     '''
@@ -217,220 +235,135 @@ for x_flat in my_train_X_flat:
 
     N0.set_spikes(n0_s, n0_t*ms)
 
-    net.run(single_example_time)
+    net.run(single_example_time*ms)
 
-    n0_mon_list.append(N0mon)
-    n1_mon_list.append(N1mon)
-    n1_state_list.append(N1state)
-    s1_ex_state_list.append(Sstate)
-
-    ts_time = ts_time + space_between_samples
+    ts_time = ts_time + single_example_time
 
     if(n0_debug):
         for k in range(X_size):
             print('Input Neuron ' + str(k) + ' spiked ' + str(len(N0mon.spike_trains()[k]/ms)))
             print(N0mon.spike_trains()[k]/ms)
 
-
+print("Network trained....")
 
 plt.figure()
-for N0mon in n0_mon_list[0:3]:
+plt.title("Input Neuron Stream")
 
-    for k in range(X_size):
-        N0mon_times_nk_plot   = N0mon.spike_trains()[k][N0mon.spike_trains()[k]/ms < 3*space_between_samples]
+for i_count in range(lim_num_samples):
+
+    color = '.k' if train_y[i_count] == 1 else '.b'
+    print(str(i_count) + " " +  str(color))
+    for k in range(N0_Neurons):
+        sample_time_condition = (N0mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N0mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
+        N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
         N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
-        plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, '.k')
+        plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
 
 
-for N0mon in n0_mon_list[3:6]:
-
-    for k in range(X_size):
-        N0mon_times_nk_plot   = N0mon.spike_trains()[k][N0mon.spike_trains()[k]/ms < 6*space_between_samples]
-        N0mon_times_nk_plot   = N0mon_times_nk_plot[N0mon_times_nk_plot/ms >= 3*space_between_samples]
-        N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
-        plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, '.b')
-
-plt.ylim((0,X_size))
-plt.xlim((0, 6*space_between_samples))
+plt.ylim((0,N0_Neurons))
+plt.xlim((0, lim_num_samples*single_example_time))
 plt.xlabel('Time (ms)')
 plt.ylabel('Neuron index');
 
+
 plt.figure()
-ax1= plt.subplot(411)
-for k in range(len(n1_state_list)):
-    plt.plot(n1_state_list[k].t/ms, n1_state_list[k].v[0], label='N1,0')
-    plt.plot(n1_state_list[k].t/ms, n1_state_list[k].dynThreshold[0], label='Threshold')
-plt.xlabel('Time (ms)')
-plt.ylabel('V')
 
-plt.subplot(412, sharex = ax1)
-for k in range(len(n1_state_list)):
-    plt.plot(n1_state_list[k].t/ms, n1_state_list[k].v[1], label='N1,1')
-    plt.plot(n1_state_list[k].t/ms, n1_state_list[k].dynThreshold[1], label='Threshold')
-plt.xlabel('Time (ms)')
-plt.ylabel('V')
+plt.title("Output Neuron Membrana")
 
+for i_count in range(lim_num_samples):
 
-plt.subplot(413, sharex = ax1)
-for k in range(len(n1_state_list)):
-    for w in range(10):
-        plt.plot(s1_ex_state_list[k].t/ms, s1_ex_state_list[k].w[392+10+w])
-plt.legend();
+    color = 'k' if train_y[i_count] == 1 else 'b'
+    print(str(i_count) + " " +  str(color))
+    sample_time_condition = (N1state.t/ms < (i_count+1)*single_example_time) & (N1state.t/ms >= (i_count)*single_example_time)
+    sample_time_index     = np.where(sample_time_condition)[0]
+    N1state_times_no_plot = N1state.t[sample_time_condition]
 
-plt.subplot(414, sharex = ax1)
+    for n1 in range(N1_Neurons):
 
-for k in range(len(n1_state_list)):
-    for w in range(10):
-        plt.plot(s1_ex_state_list[k].t/ms, s1_ex_state_list[k].w[X_size+392+10+w])
-plt.legend();
+        if(n1==0):
+            ax1 = plt.subplot(211+n1)
+        else:
+            plt.subplot(211+n1, sharex = ax1)
+
+        plt.plot(N1state_times_no_plot/ms, N1state.v[n1][sample_time_index], color=color, label='N1::'+str(n1))
+        plt.plot(N1state_times_no_plot/ms, N1state.dynThreshold[n1][sample_time_index], color=color, label='Threshold')
+
+        plt.xlabel('Time (ms)')
+        plt.ylabel('V')
+        plt.xlim((0, lim_num_samples*single_example_time))
 
 
-plt.show()
 
-exit()
+plt.figure()
+
+plt.title("N0-N1 Weights and Traces")
+
+
+weights_to_plot = np.arange(392+10,392+10+10)
+for i_count in range(lim_num_samples):
+
+    color = 'k' if train_y[i_count] == 1 else 'b'
+    print(str(i_count) + " " +  str(color))
+    sample_time_condition = (Sstate.t/ms < (i_count+1)*single_example_time) & (Sstate.t/ms >= (i_count)*single_example_time)
+    sample_time_index     = np.where(sample_time_condition)[0]
+    Sstate_times_no_plot  = Sstate.t[sample_time_condition]
+
+    num_suplots = 411;
+    for n1 in range(N1_Neurons):
+
+        if(n1==0):
+            ax1 = plt.subplot(num_suplots)
+        else:
+            plt.subplot(num_suplots, sharex = ax1)
+
+        for weights in weights_to_plot:
+            print("Print weight: " + str(weights+(n1*N0_Neurons)))
+            plt.plot(Sstate_times_no_plot/ms, Sstate.w[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
+
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Weights')
+        plt.ylim((0,0.05))
+        plt.xlim((0, lim_num_samples*single_example_time))
+        num_suplots = num_suplots + 1
+
+        plt.subplot(num_suplots, sharex = ax1)
+
+        for weights in weights_to_plot:
+            plt.plot(Sstate_times_no_plot/ms, Sstate.apre[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
+            plt.plot(Sstate_times_no_plot/ms, Sstate.apost[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
+
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Traces')
+        plt.ylim((-0.05,0.05))
+        plt.xlim((0, lim_num_samples*single_example_time))
+        num_suplots = num_suplots + 1
+
+
+
+plt.figure()
+
+plt.title("Output Neuron Stream")
 
 print('Output Neuron 0 spiked ' + str(len(N1mon.spike_trains()[0]/ms)))
 print('Output Neuron 1 spiked ' + str(len(N1mon.spike_trains()[1]/ms)))
 
-print('Output spikes Neuron 0')
-print(N1mon.spike_trains()[0]/ms)
-print('Output spikes Neuron 1')
-print(N1mon.spike_trains()[1]/ms)
+for i_count in range(lim_num_samples):
 
-N1mon_times_n0_plot   = N1mon.spike_trains()[0][N1mon.spike_trains()[0]/ms < plot_stop_ms]
-N1mon_nspikes_n0_plot = np.ones(size(N1mon_times_n0_plot))*2
-N1mon_times_n1_plot   = N1mon.spike_trains()[1][N1mon.spike_trains()[1]/ms < plot_stop_ms]
-N1mon_nspikes_n1_plot = np.ones(size(N1mon_times_n1_plot))*3
+    color = '.k' if train_y[i_count] == 1 else '.b'
+    print(str(i_count) + " " +  str(color))
+    for k in range(N1_Neurons):
+        sample_time_condition = (N1mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N1mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
+        N1mon_times_nk_plot   = N1mon.spike_trains()[k][sample_time_condition]
+        N1mon_nspikes_nk_plot = np.ones(size(N1mon_times_nk_plot))*k
+        plt.plot(N1mon_times_nk_plot/ms, N1mon_nspikes_nk_plot, color)
 
-plt.figure()
 
-ax1= plt.subplot(511)
-plt.plot(N0mon_times_n0_plot/ms, N0mon_nspikes_n0_plot, '.k')
-plt.plot(N0mon_times_n1_plot/ms, N0mon_nspikes_n1_plot, '.k')
-plt.plot(N1mon_times_n0_plot/ms, N1mon_nspikes_n0_plot, '.r')
-plt.plot(N1mon_times_n1_plot/ms, N1mon_nspikes_n1_plot, '.b')
+plt.ylim((0,N1_Neurons))
+plt.xlim((0, lim_num_samples*single_example_time))
 plt.xlabel('Time (ms)')
 plt.ylabel('Neuron index');
 
-plt.subplot(512, sharex = ax1)
-plt.plot(N1state.t[plot_start_index:plot_stop_index]/ms, N1state.v[0][plot_start_index:plot_stop_index], label='N1,0')
-plt.plot(N1state.t[plot_start_index:plot_stop_index]/ms, N1state.dynThreshold[0][plot_start_index:plot_stop_index], label='Threshold')
-plt.xlabel('Time (ms)')
-plt.ylabel('v')
+plt.show()
 
-plt.subplot(513, sharex = ax1)
-plt.plot(N1state.t[plot_start_index:plot_stop_index]/ms, N1state.v[1][plot_start_index:plot_stop_index], label='N1,1')
-plt.plot(N1state.t[plot_start_index:plot_stop_index]/ms, N1state.dynThreshold[1][plot_start_index:plot_stop_index], label='Threshold')
-plt.xlabel('Time (ms)')
-plt.ylabel('v')
+exit();
 
-plt.subplot(514, sharex = ax1)
-plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[0][plot_start_index:plot_stop_index], label='0-0')
-plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[1][plot_start_index:plot_stop_index], label='1-0')
-plt.legend();
-
-plt.subplot(515, sharex = ax1)
-plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[2][plot_start_index:plot_stop_index], label='0-1')
-plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[3][plot_start_index:plot_stop_index], label='1-1')
-plt.legend();
-
-stop()
-
-#indices = np.append(indices, N1mon_nspikes_n0_plot)
-#times   = np.append(times, N1mon_times_n0_plot/ms)
-#
-#N0    = SpikeGeneratorGroup(3, indices, times*ms)
-#N0mon = SpikeMonitor(N0)
-#
-#N1      = NeuronGroup(1, eqs, threshold='v>dynThreshold', reset=eqs_reset, refractory=5*ms, method='exact')
-#N1mon   = SpikeMonitor(N1)
-#N1state = StateMonitor(N1, ['v'], record=True)
-#N1.tau  = [2]*ms
-#N1.taus = [3]*ms
-#N1.v    = [0]
-#N1.a    = [0]
-#N1.dynThreshold = [Threshold]
-#
-#S = Synapses(N0, N1,
-#                    '''
-#                    w : 1
-#                    wmin : 1
-#                    wmax : 1
-#                    dapre/dt = -apre/taupre : 1 (clock-driven)
-#                    dapost/dt = -apost/taupost : 1 (clock-driven)
-#                    ''',
-#                    on_pre='''
-#                    v_post += w
-#                    apre += 0.1
-#                    w =  clip(w+apost, wmin, wmax)
-#                    ''',
-#                    on_post='''
-#                    apost += -0.25
-#                    w = clip(w+apre, wmin, wmax)
-#                    ''',
-#                    method='linear')
-#
-#S.connect(i=[0,1,2], j=[0,0,0])
-#S.w[0, 0] = 0.8
-#S.w[1, 0] = 0.8
-#S.w[2, 0] = -0.6
-#S.delay[0, 0] = 5*ms
-#S.delay[1, 0] = 5*ms
-#S.delay[2, 0] = 0*ms
-##the output of the N2 (which is the one that learned x1>x2) should be faster to inhibit the membrane
-#S.wmax[:, 0] = 1
-#S.wmin[:, 0] = -1
-#
-#
-#
-#Sstate  = StateMonitor(S, ['w', 'apre', 'apost'], record=True)
-#visualise_connectivity(S)
-#
-#run(400*ms)
-#
-#plot_start_ms = 0
-#plot_stop_ms  = plot_start_ms + 200
-#
-#plot_start_index = plot_start_ms*10
-#plot_stop_index  = plot_stop_ms*10
-#
-#N0mon_times_n0_plot   = N0mon.spike_trains()[0][N0mon.spike_trains()[0]/ms < plot_stop_ms]
-#N0mon_times_n1_plot   = N0mon.spike_trains()[1][N0mon.spike_trains()[1]/ms < plot_stop_ms]
-#N0mon_times_n2_plot   = N0mon.spike_trains()[2][N0mon.spike_trains()[2]/ms < plot_stop_ms]
-#N0mon_nspikes_n0_plot = np.ones(size(N0mon_times_n0_plot))*0
-#N0mon_nspikes_n1_plot = np.ones(size(N0mon_times_n1_plot))*1
-#N0mon_nspikes_n2_plot = np.ones(size(N0mon_times_n2_plot))*2
-#
-#N1mon_times_n0_plot   = N1mon.spike_trains()[0][N1mon.spike_trains()[0]/ms < plot_stop_ms]
-#N1mon_nspikes_n0_plot = np.ones(size(N1mon_times_n0_plot))*3
-#
-#plt.figure()
-#
-#ax1= plt.subplot(411)
-#plt.plot(N0mon_times_n0_plot/ms, N0mon_nspikes_n0_plot, '.k')
-#plt.plot(N0mon_times_n1_plot/ms, N0mon_nspikes_n1_plot, '.k')
-#plt.plot(N0mon_times_n2_plot/ms, N0mon_nspikes_n2_plot, '.r')
-#plt.plot(N1mon_times_n0_plot/ms, N1mon_nspikes_n0_plot, '.b')
-#plt.xlabel('Time (ms)')
-#plt.ylabel('Neuron index');
-#
-#plt.subplot(412, sharex = ax1)
-#plt.plot(N1state.t[plot_start_index:plot_stop_index]/ms, N1state.v[0][plot_start_index:plot_stop_index], label='N1,0')
-#plt.xlabel('Time (ms)')
-#plt.ylabel('v')
-#
-#plt.subplot(413, sharex = ax1)
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[0][plot_start_index:plot_stop_index], label='N1 W 0')
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[1][plot_start_index:plot_stop_index], label='N1 W 1')
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.w[2][plot_start_index:plot_stop_index], label='N1 W 2')
-#plt.legend();
-#
-#
-#plt.subplot(414, sharex = ax1)
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.apre[0][plot_start_index:plot_stop_index], label='N1 W 0')
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.apre[1][plot_start_index:plot_stop_index], label='N1 W 1')
-#plt.plot(Sstate.t[plot_start_index:plot_stop_index]/ms, Sstate.apre[2][plot_start_index:plot_stop_index], label='N1 W 2')
-#plt.legend();
-
-
-plt.show();
