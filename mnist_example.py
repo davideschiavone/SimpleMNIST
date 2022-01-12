@@ -2,6 +2,7 @@ from brian2 import *
 import matplotlib.pyplot as plt
 import numpy as np
 from keras.datasets import mnist
+import sys
 
 def visualise_connectivity(S):
     Ns = len(S.source)
@@ -25,6 +26,43 @@ def visualise_connectivity(S):
 
 
 
+
+
+if(len(sys.argv)<2):
+    argv_num_training_example = 15
+else:
+    argv_num_training_example = int(sys.argv[1])
+
+if(len(sys.argv)<3):
+    argv_step_mon = 0.1
+else:
+    argv_step_mon = float(sys.argv[2])
+
+if(len(sys.argv)<4):
+    argv_start_plot = 0
+else:
+    argv_start_plot = int(sys.argv[3])
+
+if(len(sys.argv)<5):
+    argv_duration_plot = argv_num_training_example
+else:
+    argv_duration_plot = int(sys.argv[4])
+
+if(len(sys.argv)<6):
+    argv_step_plot = 1
+else:
+    argv_step_plot = int(sys.argv[5])
+
+print('Start simulation with : ')
+print("argv_num_training_example= " + str(argv_num_training_example))
+print("argv_step_mon= " + str(argv_step_mon))
+print("argv_start_plot= " + str(argv_start_plot))
+print("argv_duration_plot= " + str(argv_duration_plot))
+print("argv_step_plot= " + str(argv_step_plot))
+
+print_input_stream = False
+print_output_membrana = True
+print_traces = False
 
 start_scope()
 
@@ -96,7 +134,7 @@ taupost = 5 * ms
 
 
 eqs = '''
-dv/dt = -v/tau + a/taus: 1 (unless refractory)
+dv/dt = -v/tau + a/taus: 1
 da/dt = -a/taus : 1
 ddynThreshold/dt = (0.8-dynThreshold)/taut : 1
 tau : second
@@ -123,11 +161,11 @@ N1_Neurons = 2;
 
 N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>dynThreshold', reset=eqs_reset, refractory=10*ms, method='exact')
 
-N1.tau  = [5, 5]*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
+N1.tau  = [10, 10]*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
 
 N1.taus = [30, 30]*ms
-N1.taut = [50, 50]*ms
+N1.taut = [150, 150]*ms
 N1.v    = [0]
 N1.a    = [0]
 N1.dynThreshold = [Threshold]
@@ -166,14 +204,14 @@ S.connect(i=i, j=j)
 
 for n0 in range(N0_Neurons):
     for n1 in range(N1_Neurons):
-        S.w[n0,n1] = (Threshold+0.05)/(X_size/16)*(1.0 + np.random.random_sample()/10) #as soon as it spikes, the output spikes too
+        S.w[n0,n1] = (Threshold+0.05)/(X_size/16)*(1.0 + np.random.random_sample()/4) #as soon as it spikes, the output spikes too
 
 S.wmax[:, 0] = 1
 S.wmin[:, 0] = 0
 S.wmax[:, 1] = 1
 S.wmin[:, 1] = 0
 S.delay[:, 0] = 1*ms
-S.delay[:, 1] = 2*ms
+S.delay[:, 1] = 1*ms
 
 
 S2 = Synapses(N1, N1,
@@ -186,8 +224,8 @@ S2 = Synapses(N1, N1,
                     method='linear')
 
 S2.connect(i=[0,1], j=[1,0])
-S2.w[0, 1] = -1
-S2.w[1, 0] = -1
+S2.w[0, 1] = -3
+S2.w[1, 0] = -3
 S2.delay[0, 1] = 0*ms
 S2.delay[1, 0] = 0*ms
 
@@ -196,20 +234,12 @@ net.add(N1)
 net.add(S)
 net.add(S2)
 
-N0mon    = SpikeMonitor(N0)
-N1mon    = SpikeMonitor(N1)
-N1state  = StateMonitor(N1, ['v', 'dynThreshold'], record=True)
-Sstate   = StateMonitor(S, ['w', 'apre', 'apost'], record=True)
-S2state  = StateMonitor(S2, ['w'], record=True)
-net.add(N0mon)
-net.add(N1mon)
-net.add(N1state)
-net.add(Sstate)
-net.add(S2state)
+start_mon = argv_start_plot*single_example_time
+
 
 
 #simulate only first 6 samples
-lim_num_samples = 6
+lim_num_samples = argv_num_training_example
 my_train_X_flat  = train_X_flat[0:lim_num_samples];
 
 print("Network created.... Start training it with " + str(lim_num_samples) + " samples")
@@ -217,6 +247,7 @@ print("Network created.... Start training it with " + str(lim_num_samples) + " s
 ts_time = 0
 n0_s_list = []
 n0_t_list = []
+i_count = 0
 
 for x_flat in my_train_X_flat:
 
@@ -230,10 +261,33 @@ for x_flat in my_train_X_flat:
     n0_s    = np.where(x_flat > 0)[0]
     n0_t    = ts_time + (256 - x_flat[n0_s])*10/255
 
-    n0_s_list.append(n0_s)
-    n0_t_list.append(n0_t)
+    if(i_count % 100 == 0):
+        print("Trained " + str(i_count) + " samples")
+
+    i_count = i_count + 1
+
+    if(print_input_stream):
+        n0_s_list.append(n0_s)
+        n0_t_list.append(n0_t)
 
     N0.set_spikes(n0_s, n0_t*ms)
+
+    if(ts_time == start_mon):
+        print("Add monitors at time " + str(ts_time))
+        N0mon    = SpikeMonitor(N0)
+        N1mon    = SpikeMonitor(N1)
+        N1state  = StateMonitor(N1, ['v', 'dynThreshold'], record=True, dt=argv_step_mon*ms)
+        Sstate   = StateMonitor(S, ['w', 'apre', 'apost'], record=True, dt=argv_step_mon*ms)
+        S2state  = StateMonitor(S2, ['w'], record=True, dt=argv_step_mon*ms)
+
+        if(print_input_stream):
+            net.add(N0mon)
+
+        net.add(N1mon)
+        if(print_output_membrana):
+            net.add(N1state)
+
+        net.add(Sstate)
 
     net.run(single_example_time*ms)
 
@@ -249,48 +303,65 @@ print("Network trained....")
 plt.figure()
 plt.title("Input Neuron Stream")
 
-for i_count in range(lim_num_samples):
+end_plot = argv_start_plot+argv_duration_plot
 
-    color = '.k' if train_y[i_count] == 1 else '.b'
-    print(str(i_count) + " " +  str(color))
-    for k in range(N0_Neurons):
-        sample_time_condition = (N0mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N0mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
-        N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
-        N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
-        plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
+for i_count in np.arange(argv_start_plot,end_plot):
 
+    if(print_input_stream):
+        color = '.k' if train_y[i_count] == 1 else '.b'
+        for k in range(N0_Neurons):
+            sample_time_condition = (N0mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N0mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
+            N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
+            N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
+            plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
+    else:
+            color = 'k-' if train_y[i_count] == 1 else 'b-'
+            times = np.arange((i_count)*single_example_time,(i_count+1)*single_example_time,0.1)
+            plt.plot(times, np.ones(size(times))*(train_y[i_count]), color)
 
-plt.ylim((0,N0_Neurons))
-plt.xlim((0, lim_num_samples*single_example_time))
+if(print_input_stream):
+    plt.ylim((-0.5,N0_Neurons))
+else:
+    plt.ylim((-0.5,size(classes)+1))
+
+plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 plt.xlabel('Time (ms)')
 plt.ylabel('Neuron index');
 
 
-plt.figure()
+step=argv_step_plot;
 
-plt.title("Output Neuron Membrana")
 
-for i_count in range(lim_num_samples):
 
-    color = 'k' if train_y[i_count] == 1 else 'b'
-    print(str(i_count) + " " +  str(color))
-    sample_time_condition = (N1state.t/ms < (i_count+1)*single_example_time) & (N1state.t/ms >= (i_count)*single_example_time)
-    sample_time_index     = np.where(sample_time_condition)[0]
-    N1state_times_no_plot = N1state.t[sample_time_condition]
+if(print_output_membrana):
+    plt.figure()
 
-    for n1 in range(N1_Neurons):
+    plt.title("Output Neuron Membrana")
 
-        if(n1==0):
-            ax1 = plt.subplot(211+n1)
-        else:
-            plt.subplot(211+n1, sharex = ax1)
 
-        plt.plot(N1state_times_no_plot/ms, N1state.v[n1][sample_time_index], color=color, label='N1::'+str(n1))
-        plt.plot(N1state_times_no_plot/ms, N1state.dynThreshold[n1][sample_time_index], color=color, label='Threshold')
+    for i_count in np.arange(argv_start_plot,end_plot):
 
-        plt.xlabel('Time (ms)')
-        plt.ylabel('V')
-        plt.xlim((0, lim_num_samples*single_example_time))
+        color = 'k' if train_y[i_count] == 1 else 'b'
+        sample_time_condition = (N1state.t/ms < (i_count+1)*single_example_time) & (N1state.t/ms >= (i_count)*single_example_time)
+        sample_time_index     = np.where(sample_time_condition)[0]
+        N1state_times_no_plot = N1state.t[sample_time_condition]
+
+        sample_time_index     = sample_time_index[0:-1:step];
+        N1state_times_no_plot = N1state_times_no_plot[0:-1:step];
+
+        for n1 in range(N1_Neurons):
+
+            if(n1==0):
+                ax1 = plt.subplot(211+n1)
+            else:
+                plt.subplot(211+n1, sharex = ax1)
+
+            plt.plot(N1state_times_no_plot/ms, N1state.v[n1][sample_time_index], color=color, label='N1::'+str(n1))
+            plt.plot(N1state_times_no_plot/ms, N1state.dynThreshold[n1][sample_time_index], color=color, label='Threshold')
+
+            plt.xlabel('Time (ms)')
+            plt.ylabel('V')
+            plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 
 
 
@@ -300,15 +371,18 @@ plt.title("N0-N1 Weights and Traces")
 
 
 weights_to_plot = np.arange(392+10,392+10+10)
-for i_count in range(lim_num_samples):
+for i_count in np.arange(argv_start_plot,end_plot):
 
     color = 'k' if train_y[i_count] == 1 else 'b'
-    print(str(i_count) + " " +  str(color))
     sample_time_condition = (Sstate.t/ms < (i_count+1)*single_example_time) & (Sstate.t/ms >= (i_count)*single_example_time)
     sample_time_index     = np.where(sample_time_condition)[0]
     Sstate_times_no_plot  = Sstate.t[sample_time_condition]
 
-    num_suplots = 411;
+    sample_time_index     = sample_time_index[0:-1:step];
+    Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
+
+    num_suplots = 411 if print_traces else 211;
+
     for n1 in range(N1_Neurons):
 
         if(n1==0):
@@ -317,26 +391,28 @@ for i_count in range(lim_num_samples):
             plt.subplot(num_suplots, sharex = ax1)
 
         for weights in weights_to_plot:
-            print("Print weight: " + str(weights+(n1*N0_Neurons)))
             plt.plot(Sstate_times_no_plot/ms, Sstate.w[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
 
         plt.xlabel('Time (ms)')
         plt.ylabel('Weights')
-        plt.ylim((0,0.05))
-        plt.xlim((0, lim_num_samples*single_example_time))
+        plt.ylim((-0.2,+0.2))
+        plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
+
         num_suplots = num_suplots + 1
 
-        plt.subplot(num_suplots, sharex = ax1)
+        if(print_traces):
+            plt.subplot(num_suplots, sharex = ax1)
 
-        for weights in weights_to_plot:
-            plt.plot(Sstate_times_no_plot/ms, Sstate.apre[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
-            plt.plot(Sstate_times_no_plot/ms, Sstate.apost[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
+            for weights in weights_to_plot:
+                plt.plot(Sstate_times_no_plot/ms, Sstate.apre[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
+                plt.plot(Sstate_times_no_plot/ms, Sstate.apost[weights+(n1*N0_Neurons)][sample_time_index], color=color, label='N1::'+str(n1))
 
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Traces')
-        plt.ylim((-0.05,0.05))
-        plt.xlim((0, lim_num_samples*single_example_time))
-        num_suplots = num_suplots + 1
+            plt.xlabel('Time (ms)')
+            plt.ylabel('Traces')
+            plt.ylim((-0.05,0.05))
+            plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
+
+            num_suplots = num_suplots + 1
 
 
 
@@ -347,10 +423,9 @@ plt.title("Output Neuron Stream")
 print('Output Neuron 0 spiked ' + str(len(N1mon.spike_trains()[0]/ms)))
 print('Output Neuron 1 spiked ' + str(len(N1mon.spike_trains()[1]/ms)))
 
-for i_count in range(lim_num_samples):
+for i_count in np.arange(argv_start_plot,end_plot):
 
-    color = '.k' if train_y[i_count] == 1 else '.b'
-    print(str(i_count) + " " +  str(color))
+    color = '*k' if train_y[i_count] == 1 else '*r'
     for k in range(N1_Neurons):
         sample_time_condition = (N1mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N1mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
         N1mon_times_nk_plot   = N1mon.spike_trains()[k][sample_time_condition]
@@ -359,7 +434,8 @@ for i_count in range(lim_num_samples):
 
 
 plt.ylim((0,N1_Neurons))
-plt.xlim((0, lim_num_samples*single_example_time))
+plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
+
 plt.xlabel('Time (ms)')
 plt.ylabel('Neuron index');
 
