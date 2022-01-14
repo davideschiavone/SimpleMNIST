@@ -132,7 +132,7 @@ single_example_time   = 25
 taupre = 2 * ms
 taupost = 5 * ms
 
-Threshold_cost = 0.12
+Threshold_cost = 0.08
 V_reset = -Threshold_cost/0.8
 A_reset = +Threshold_cost/0.8
 delta_threshold = 0.25*Threshold_cost
@@ -182,13 +182,13 @@ S = Synapses(N0, N1,
                     dapost/dt = -apost/taupost : 1 (clock-driven)
                     ''',
                     on_pre='''
-                    v_post = clip(v_post+w,-1,1)
+                    v_post = v_post+w
                     apre += reward*(0.0001)
-                    w =  clip(w+apost, wmin, wmax)
+                    w =  clip(w+apost,wmin,wmax)
                     ''',
                     on_post='''
-                    apost += reward*(-0.0003)
-                    w = clip(w+apre, wmin, wmax)
+                    apost += (-0.0003)
+                    w =  clip(w+apre,wmin,wmax)
                     ''',
                     method='linear')
 
@@ -205,9 +205,14 @@ j = j.astype(int)
 
 S.connect(i=i, j=j)
 
+
+weight_matrix = np.ones((N0_Neurons,N1_Neurons))*np.random.random_sample((N0_Neurons,N1_Neurons))
+row_sums = weight_matrix.sum(axis=0)
+weight_matrix = weight_matrix / row_sums
+
 for n0 in range(N0_Neurons):
     for n1 in range(N1_Neurons):
-        S.w[n0,n1] = 3*(1.0/N0_Neurons)*(1.0 + (np.random.random_sample()/2) - 0.25) #as soon as it spikes, the output spikes too
+        S.w[n0,n1] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
 
 S.wmax[:, 0] = 1
 S.wmin[:, 0] = 0
@@ -252,6 +257,9 @@ n0_s_list = []
 n0_t_list = []
 i_count = 0
 
+max_w = -1
+min_w = 1
+
 for x_flat in my_train_X_flat:
 
     '''
@@ -290,7 +298,7 @@ for x_flat in my_train_X_flat:
         N0mon    = SpikeMonitor(N0)
         N1mon    = SpikeMonitor(N1)
         N1state  = StateMonitor(N1, ['v'], record=True, dt=argv_step_mon*ms)
-        Sstate   = StateMonitor(S, ['w', 'apre', 'apost'], record=True, dt=argv_step_mon*ms)
+        Sstate   = StateMonitor(S, ['w','apre', 'apost'], record=True, dt=argv_step_mon*ms)
 
         if(print_input_stream):
             net.add(N0mon)
@@ -298,10 +306,32 @@ for x_flat in my_train_X_flat:
         net.add(N1mon)
         if(print_output_membrana):
             net.add(N1state)
-
         net.add(Sstate)
 
+
+
     net.run(single_example_time*ms)
+
+    for n0 in range(N0_Neurons):
+        for n1 in range(N1_Neurons):
+            weight_matrix[n0,n1] = S.w[n0,n1]
+
+    if(weight_matrix.max() > max_w):
+        max_w = weight_matrix.max()
+
+    if(weight_matrix.min() < min_w):
+        min_w = weight_matrix.min()
+
+
+    row_sums = weight_matrix.sum(axis=0)
+    weight_matrix = weight_matrix / row_sums
+
+    for n0 in range(N0_Neurons):
+        for n1 in range(N1_Neurons):
+            S.w[n0,n1] = weight_matrix[n0,n1]
+
+
+
 
     ts_time = ts_time + single_example_time
     i_count = i_count + 1
@@ -326,15 +356,15 @@ for i_count in np.arange(argv_start_plot,end_plot):
             N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
             N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
             plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
-    else:
-            color = 'k-' if train_y[i_count] == 1 else 'b-'
-            times = np.arange((i_count)*single_example_time,(i_count+1)*single_example_time,0.1)
-            plt.plot(times, np.ones(size(times))*(train_y[i_count]), color)
+    #else:
+    #        color = 'k-' if train_y[i_count] == 1 else 'b-'
+    #        times = np.arange((i_count)*single_example_time,(i_count+1)*single_example_time,0.1)
+    #        plt.plot(times, np.ones(size(times))*(train_y[i_count]), color)
 
 if(print_input_stream):
     plt.ylim((-0.5,N0_Neurons))
-else:
-    plt.ylim((-0.5,size(classes)+1))
+#else:
+#    plt.ylim((-0.5,size(classes)+1))
 
 plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 plt.xlabel('Time (ms)')
@@ -406,7 +436,7 @@ for i_count in np.arange(argv_start_plot,end_plot):
 
         plt.xlabel('Time (ms)')
         plt.ylabel('Weights')
-        plt.ylim((-0.006,+0.006))
+        plt.ylim((min_w*1.1,max_w*1.1))
         plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 
         num_suplots = num_suplots + 1
