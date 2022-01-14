@@ -62,7 +62,7 @@ print("argv_step_plot= " + str(argv_step_plot))
 
 print_input_stream = False
 print_output_membrana = True
-print_traces = False
+print_traces = True
 
 start_scope()
 
@@ -132,22 +132,25 @@ single_example_time   = 25
 taupre = 2 * ms
 taupost = 5 * ms
 
+Threshold_cost = 0.12
+V_reset = -Threshold_cost/0.8
+A_reset = +Threshold_cost/0.8
+delta_threshold = 0.25*Threshold_cost
+delta_threshold = 0
 
 eqs = '''
-dv/dt = -v/tau + a/taus: 1
-da/dt = -a/taus : 1
-ddynThreshold/dt = (0.8-dynThreshold)/taut : 1
+dv/dt = -v/tau + a/taus: 1 (unless refractory)
+da/dt = -a/taus: 1
 tau : second
 taus : second
 taut : second
 '''
 eqs_reset = '''
-                v = -1
-                a = +1
-                dynThreshold = dynThreshold+0.2
+                v = V_reset
+                a = A_reset
             '''
 
-Threshold = 0.8
+
 
 n0_debug = False
 
@@ -159,7 +162,7 @@ N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
 N1_Neurons = 2;
 
-N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>dynThreshold', reset=eqs_reset, refractory=10*ms, method='exact')
+N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold_cost', reset=eqs_reset, refractory=10*ms, method='exact')
 
 N1.tau  = [10, 10]*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
@@ -168,23 +171,23 @@ N1.taus = [30, 30]*ms
 N1.taut = [150, 150]*ms
 N1.v    = [0]
 N1.a    = [0]
-N1.dynThreshold = [Threshold]
 
 S = Synapses(N0, N1,
                     '''
                     w : 1
                     wmin : 1
                     wmax : 1
+                    reward : 1
                     dapre/dt = -apre/taupre : 1 (clock-driven)
                     dapost/dt = -apost/taupost : 1 (clock-driven)
                     ''',
                     on_pre='''
-                    v_post += w
-                    apre += 0.01
+                    v_post = clip(v_post+w,-1,1)
+                    apre += reward*(0.0001)
                     w =  clip(w+apost, wmin, wmax)
                     ''',
                     on_post='''
-                    apost += -0.025
+                    apost += reward*(-0.0003)
                     w = clip(w+apre, wmin, wmax)
                     ''',
                     method='linear')
@@ -204,7 +207,7 @@ S.connect(i=i, j=j)
 
 for n0 in range(N0_Neurons):
     for n1 in range(N1_Neurons):
-        S.w[n0,n1] = (Threshold+0.05)/(X_size/16)*(1.0 + np.random.random_sample()/4) #as soon as it spikes, the output spikes too
+        S.w[n0,n1] = 3*(1.0/N0_Neurons)*(1.0 + (np.random.random_sample()/2) - 0.25) #as soon as it spikes, the output spikes too
 
 S.wmax[:, 0] = 1
 S.wmin[:, 0] = 0
@@ -224,8 +227,8 @@ S2 = Synapses(N1, N1,
                     method='linear')
 
 S2.connect(i=[0,1], j=[1,0])
-S2.w[0, 1] = -3
-S2.w[1, 0] = -3
+S2.w[0, 1] = -Threshold_cost*3
+S2.w[1, 0] = -Threshold_cost*3
 S2.delay[0, 1] = 0*ms
 S2.delay[1, 0] = 0*ms
 
@@ -264,7 +267,7 @@ for x_flat in my_train_X_flat:
     if(i_count % 100 == 0):
         print("Trained " + str(i_count) + " samples")
 
-    i_count = i_count + 1
+
 
     if(print_input_stream):
         n0_s_list.append(n0_s)
@@ -272,13 +275,22 @@ for x_flat in my_train_X_flat:
 
     N0.set_spikes(n0_s, n0_t*ms)
 
+
+    for n1 in range(N1_Neurons):
+        if (n1 == 0):
+            reward_s = +1 if train_y[i_count] == 1 else -1
+        elif (n1 == 1):
+            reward_s = +1 if train_y[i_count] == 2 else -1
+
+        for n0 in range(N0_Neurons):
+            S.reward[n0,n1] = reward_s
+
     if(ts_time == start_mon):
         print("Add monitors at time " + str(ts_time))
         N0mon    = SpikeMonitor(N0)
         N1mon    = SpikeMonitor(N1)
-        N1state  = StateMonitor(N1, ['v', 'dynThreshold'], record=True, dt=argv_step_mon*ms)
+        N1state  = StateMonitor(N1, ['v'], record=True, dt=argv_step_mon*ms)
         Sstate   = StateMonitor(S, ['w', 'apre', 'apost'], record=True, dt=argv_step_mon*ms)
-        S2state  = StateMonitor(S2, ['w'], record=True, dt=argv_step_mon*ms)
 
         if(print_input_stream):
             net.add(N0mon)
@@ -292,7 +304,7 @@ for x_flat in my_train_X_flat:
     net.run(single_example_time*ms)
 
     ts_time = ts_time + single_example_time
-
+    i_count = i_count + 1
     if(n0_debug):
         for k in range(X_size):
             print('Input Neuron ' + str(k) + ' spiked ' + str(len(N0mon.spike_trains()[k]/ms)))
@@ -357,7 +369,6 @@ if(print_output_membrana):
                 plt.subplot(211+n1, sharex = ax1)
 
             plt.plot(N1state_times_no_plot/ms, N1state.v[n1][sample_time_index], color=color, label='N1::'+str(n1))
-            plt.plot(N1state_times_no_plot/ms, N1state.dynThreshold[n1][sample_time_index], color=color, label='Threshold')
 
             plt.xlabel('Time (ms)')
             plt.ylabel('V')
@@ -395,7 +406,7 @@ for i_count in np.arange(argv_start_plot,end_plot):
 
         plt.xlabel('Time (ms)')
         plt.ylabel('Weights')
-        plt.ylim((-0.2,+0.2))
+        plt.ylim((-0.006,+0.006))
         plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 
         num_suplots = num_suplots + 1
@@ -409,7 +420,7 @@ for i_count in np.arange(argv_start_plot,end_plot):
 
             plt.xlabel('Time (ms)')
             plt.ylabel('Traces')
-            plt.ylim((-0.05,0.05))
+            plt.ylim((-0.0003,+0.0003))
             plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 
             num_suplots = num_suplots + 1
