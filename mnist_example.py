@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from keras.datasets import mnist
 import sys
-set_device("cuda_standalone")
-
+set_device('cuda_standalone', build_on_run=False)
 
 def visualise_connectivity(S):
     Ns = len(S.source)
@@ -436,6 +435,9 @@ for x_flat in my_train_X_flat:
 
 
 print("Network trained....")
+
+device.build( directory=codefolder, compile = True, run = True, debug=False)
+
 
 if(print_stats):
     plt.figure()
