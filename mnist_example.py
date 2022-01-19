@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from keras.datasets import mnist
 import sys
-set_device('cuda_standalone', build_on_run=False)
+set_device('cpp_standalone', build_on_run=False)
 
 def visualise_connectivity(S):
     Ns = len(S.source)
@@ -71,7 +71,7 @@ print_weights = False
 print_traces = False
 print_stats = False
 read_weight = False
-store_weight = True
+store_weight = False
 
 start_scope()
 
@@ -245,18 +245,18 @@ if (read_weight):
 else:
     weight_matrix = np.random.normal(loc=1/N0_Neurons, scale=1/N0_Neurons*0.1, size=(N0_Neurons,N1_Neurons))
 
-
 row_sums = weight_matrix.sum(axis=0)
 weight_matrix = weight_matrix / row_sums
 
 
+plt.figure(1)
 count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
-
 plt.xlim(min(bins)*1.1, max(bins)*1.1)
 plt.ylim(0, max(count)*1.1)
 plt.grid(True)
 plt.title("Creation time after Norm")
 plt.savefig('weight_creation.png')
+plt.close(1)
 
 
 S.wmax  = 1
@@ -309,10 +309,16 @@ stat_power = np.zeros((10, my_train_X_flat.shape[1]))
 
 net.run(0*ms)
 
-for n0 in range(N0_Neurons):
-    for n1 in range(N1_Neurons):
-        S.w[n0,n1] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
+#for n0 in range(N0_Neurons):
+#    for n1 in range(N1_Neurons):
+#        S.w['i==n0 and j==n1'] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
+#
 
+weight_matrix_flat =  np.reshape(weight_matrix,(N0_Neurons*N1_Neurons))
+S.w =weight_matrix_flat
+
+
+S.reward = 1
 
 for x_flat in my_train_X_flat:
 
@@ -343,14 +349,15 @@ for x_flat in my_train_X_flat:
     N0.set_spikes(n0_s, n0_t*ms)
 
     reward_s = +1
-    for n1 in range(N1_Neurons):
+    #for n1 in range(N1_Neurons):
     #    if (n1 == 0):
     #        reward_s = +1 if train_y[i_count] == 1 else -1.3
     #    elif (n1 == 1):
     #        reward_s = +1 if train_y[i_count] == 2 else -1.3
 
-        for n0 in range(N0_Neurons):
-            S.reward[n0,n1] = reward_s
+    #    for n0 in range(N0_Neurons):
+    #        S.reward['i==n0 and j==n1'] = reward_s
+    
 
     if(ts_time == start_mon):
         print("Add monitors at time " + str(ts_time))
@@ -371,7 +378,7 @@ for x_flat in my_train_X_flat:
 
     if(i_count % 20 == 0 and store_weight):
         plt.figure(1)
-        count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
+        count, bins, ignored = plt.hist(weight_matrix_flat, N0_Neurons*N1_Neurons, density=True)
         plt.xlim(min(bins)*1.1, max(bins)*1.1)
         plt.ylim(0, max(count)*1.1)
         plt.grid(True)
@@ -381,14 +388,15 @@ for x_flat in my_train_X_flat:
 
     net.run(single_example_time*ms)
 
-    for n0 in range(N0_Neurons):
-        for n1 in range(N1_Neurons):
-            weight_matrix[n0,n1] = S.w[n0,n1]
-
+    #for n0 in range(N0_Neurons):
+    #    for n1 in range(N1_Neurons):
+    #        weight_matrix[n0,n1] = S.w['i==n0 and j==n1']
+    #weight_matrix.flatten = S.w
+    #weight_matrix_flat = S.w
 
     if(i_count % 20 == 0 and store_weight):
         plt.figure(1)
-        count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
+        count, bins, ignored = plt.hist(weight_matrix_flat, N0_Neurons*N1_Neurons, density=True)
         plt.xlim(min(bins)*1.1, max(bins)*1.1)
         plt.ylim(0, max(count)*1.1)
         plt.grid(True)
@@ -410,14 +418,15 @@ for x_flat in my_train_X_flat:
         if row_sums[n1] != 0:
             weight_matrix[:,n1] = weight_matrix[:,n1] / row_sums[n1]
 
-    for n0 in range(N0_Neurons):
-        for n1 in range(N1_Neurons):
-            S.w[n0,n1] = weight_matrix[n0,n1]
+    #for n0 in range(N0_Neurons):
+    #    for n1 in range(N1_Neurons):
+    #        S.w['i==n0 and j==n1'] = weight_matrix[n0,n1]
+    S.w = weight_matrix_flat
 
 
     if(i_count % 20 == 0 and store_weight):
         plt.figure(1)
-        count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
+        count, bins, ignored = plt.hist(weight_matrix_flat, N0_Neurons*N1_Neurons, density=True)
         plt.xlim(min(bins)*1.1, max(bins)*1.1)
         plt.ylim(0, max(count)*1.1)
         plt.grid(True)
@@ -436,7 +445,8 @@ for x_flat in my_train_X_flat:
 
 print("Network trained....")
 
-device.build( directory=codefolder, compile = True, run = True, debug=False)
+#device.build( directory=codefolder, compile = True, run = True, debug=False)
+device.build( directory='outputcpp', compile = True, run = True, debug=False, clean = True)
 
 
 if(print_stats):
@@ -572,8 +582,7 @@ if(print_weights):
             plt.xlim((argv_start_plot*single_example_time, end_plot*single_example_time))
 
 with open('outfile.txt','w') as f:
-    for n1 in range(N1_Neurons):
-        line = weight_matrix[:,n1]
+    for line in weight_matrix:
         np.savetxt(f, line)
 
 
