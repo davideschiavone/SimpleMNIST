@@ -1,10 +1,11 @@
 from brian2 import *
+import brian2cuda
 import matplotlib.pyplot as plt
 import numpy as np
 from keras.datasets import mnist
 import sys
+set_device("cuda_standalone")
 
-prefs.codegen.target = 'cython'
 
 def visualise_connectivity(S):
     Ns = len(S.source)
@@ -189,7 +190,7 @@ net     = Network()
 N0_Neurons = X_size; #28x28
 N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
-N1_Neurons = 400;
+N1_Neurons = 2;
 
 N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold_cost', reset=eqs_reset, refractory=10*ms, method='exact')
 
@@ -258,12 +259,6 @@ plt.grid(True)
 plt.title("Creation time after Norm")
 plt.savefig('weight_creation.png')
 
-for n0 in range(N0_Neurons):
-    for n1 in range(N1_Neurons):
-        S.w[n0,n1] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
-
-
-
 
 S.wmax  = 1
 S.wmin  = 0
@@ -311,6 +306,14 @@ min_w = 1
 
 stat_freq  = np.zeros((10, my_train_X_flat.shape[1]))
 stat_power = np.zeros((10, my_train_X_flat.shape[1]))
+
+
+net.run(0*ms)
+
+for n0 in range(N0_Neurons):
+    for n1 in range(N1_Neurons):
+        S.w[n0,n1] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
+
 
 for x_flat in my_train_X_flat:
 
