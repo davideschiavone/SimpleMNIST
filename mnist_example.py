@@ -5,6 +5,8 @@ from keras.datasets import mnist
 import sys
 import json
 
+np.set_printoptions(formatter={'float': lambda x: "{0:0.1f}".format(x)})
+
 f_param = open('parameter.json')
  
 # returns JSON object as
@@ -19,6 +21,7 @@ if mydevice == "cpp":
     print("Compiling for CPP")
 elif mydevice == "cuda":
     import brian2cuda
+    set_device("cuda_standalone", build_on_run=False)
     print("Compiling for CUDA")
 else:
     print("Using Python")
@@ -44,13 +47,20 @@ def visualise_connectivity(S):
     plt.ylabel('Target neuron index')
 
 
+def printmatrix(mymatrix, myfile):
+    s = [[str(e) for e in row] for row in mymatrix]
+    lens = [max(map(len, col)) for col in zip(*s)]
+    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
+    table = [fmt.format(*row) for row in s]
+    print('\n'.join(table), file = myfile)
+
 figpath = './figures/'
 
-print_input_stream = False
-print_output_membrana = False
-print_weights = False
-print_traces = False
-print_stats = False
+print_input_stream = True
+print_output_membrana = True
+print_weights = True
+print_traces = True
+print_stats = True
 read_weight = False
 store_weight = False
 plt_example_mnist = False
@@ -85,7 +95,7 @@ X_Train_Samples = train_X.shape[0]
 training_example   = X_Train_Samples if parameter['training_example']==-1 else parameter['training_example'];
 monitor_step       = parameter['monitor_step']
 plot_start_time    = parameter['plot_start_time']
-plot_duration_time = parameter['plot_duration_time']
+plot_duration_time = parameter['plot_duration_time'] if parameter['plot_duration_time'] <= training_example else training_example
 plot_step_time     = parameter['plot_step_time']
 
 print('Start simulation with : ')
@@ -341,11 +351,11 @@ for x_flat in my_train_X_flat:
         net.add(N1mon)
 
         if(print_output_membrana):
-            N1state  = StateMonitor(N1, ['v'], record=True, dt=monitor_step*ms)
+            N1state  = StateMonitor(N1, ['v'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
             net.add(N1state)
 
         if(print_traces or print_weights):
-            Sstate   = StateMonitor(S, ['w','apre', 'apost'], record=True, dt=monitor_step*ms)
+            Sstate   = StateMonitor(S, ['w','apre', 'apost'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
             net.add(Sstate)
 
     net.run(single_example_time*ms)
@@ -399,14 +409,19 @@ print("Network trained....")
 if mydevice == "cpp":
     device.build( directory='outputcpp', compile = True, run = True, debug=False, clean = True)
 elif mydevice == "cuda":
-    device.build( directory=codefolder, compile = True, run = True, debug=False)
+    device.build( directory='output', compile = True, run = True, debug=False, clean = True)
 
 
+avg_img     = avg_img/training_example
+avg_img     = np.reshape(avg_img,(28, 28))
+avg_img     = avg_img.astype(int)
 
-avg_img_img = np.reshape(avg_img,(28, 28))
+sourceFile = open('avg_img.txt', 'w')
+printmatrix(avg_img,sourceFile)
+sourceFile.close()
 
 plt.figure(1)
-plt.imshow(avg_img_img/i_count, cmap=plt.get_cmap('gray'))
+plt.imshow(avg_img, cmap=plt.get_cmap('gray'))
 plt.savefig(figpath + '5_avg_training.png')
 plt.close(1)
 
@@ -502,8 +517,9 @@ if(print_output_membrana):
         plt.ylabel('V')
         plt.xlim((plot_start_time*single_example_time, end_plot*single_example_time))
         plt.ylim((-0.22, 0.12))
-        plt.savefig(figpath + '9_output_membrana.png')
-        plt.close(1)
+        plt.grid(True)
+    plt.savefig(figpath + '9_output_membrana.png')
+    plt.close(1)
 
 
 #MOST TWO FREQUENTS
@@ -518,8 +534,12 @@ weights_to_plot = [  stat_freq[1].argmax(),
         stat_freq2[2].argmax(),
      ]
 #[158, 159, 155, 156]
+weights_to_plot = []
 
-weights_to_plot = [155]
+for row in np.arange(12,16):
+    for col in np.arange(12,16):
+        weights_to_plot.append(row*28+col)
+
 print(weights_to_plot)
 
 if(print_weights):
@@ -530,6 +550,8 @@ if(print_weights):
         ax1 = plt.subplot2grid((N1_Neurons,1), (n1,0))
         ax1.set_title("N" + str(n1) + " Weights")
 
+        min_w = +1
+        max_w = -1
 
         for weights in weights_to_plot:
             time_plot = []
@@ -544,19 +566,26 @@ if(print_weights):
                 sample_time_index     = sample_time_index[0:-1:step];
                 Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
 
+                if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min() < min_w:
+                    min_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min();
+
+                if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max() > max_w:
+                    max_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max();
+
                 time_plot = np.concatenate((time_plot, Sstate_times_no_plot/ms))
                 state_plot = np.concatenate((state_plot, Sstate.w[weights+(n1*N0_Neurons)][sample_time_index]))
 
 
             plt.plot(time_plot, state_plot,label='N1::'+str(n1))
+            plt.grid(True)
 
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Weights')
-            plt.ylim((min_w*1.1,max_w*1.1))
-            plt.xlim((plot_start_time*single_example_time, end_plot*single_example_time))
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Weights')
+        plt.ylim((min_w*1.1,max_w*1.1))
+        plt.xlim((plot_start_time*single_example_time, end_plot*single_example_time))
 
-            plt.savefig(figpath + '10_weights_stdp.png')
-            plt.close(1)
+    plt.savefig(figpath + '10_weights_stdp.png')
+    plt.close(1)
 
 
 with open('outfile.txt','w') as f:
@@ -595,13 +624,13 @@ if(print_traces):
 
             plt.plot(time_plot, state_plot, label='N1::'+str(n1))
             plt.plot(time_plot, state2_plot, label='N1::'+str(n1))
-
+            plt.grid(True)
             plt.xlabel('Time (ms)')
             plt.ylabel('Traces')
             plt.ylim((-0.0012,+0.0008))
             plt.xlim((plot_start_time*single_example_time, end_plot*single_example_time))
-            plt.savefig(figpath + '11_traces_stdp.png')
-            plt.close(1)
+    plt.savefig(figpath + '11_traces_stdp.png')
+    plt.close(1)
 
 
 
