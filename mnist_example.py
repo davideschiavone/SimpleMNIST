@@ -60,7 +60,7 @@ print_input_stream = True
 print_output_membrana = True
 print_weights = True
 print_traces = True
-print_stats = True
+print_stats = False
 read_weight = False
 store_weight = False
 plt_example_mnist = False
@@ -138,20 +138,20 @@ if(plt_example_mnist):
         plt.close(1)
 
 '''
-we want to have 60FPS
-thus, each frame must take 16.6ms, here we use 15ms
+we want to have 40FPS
+thus, here we use 25ms
 10ms for the frame
-and 5ms for the resting
+and 10ms for the resting
 '''
 
 single_example_time   = 25
 
-taupre  = 5 * ms
-taupost = 5 * ms
+taupre  = 7 * ms
+taupost = 7 * ms
 
-Threshold_cost = 0.06
-V_reset = -0.1
-A_reset = +0.1
+Threshold = 0.06
+V_reset   = -0.1
+A_reset   = +0.1
 
 
 eqs = '''
@@ -176,11 +176,11 @@ net     = Network()
 N0_Neurons = X_size; #28x28
 N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
-N1_Neurons = 2;
+N1_Neurons = 4;
 
-N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold_cost', reset=eqs_reset, refractory=10*ms, method='exact')
+N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold', reset=eqs_reset, refractory=10*ms, method='exact')
 
-N1.tau  = 10*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
+N1.tau  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
 
 N1.taus = 30*ms
@@ -223,6 +223,8 @@ j_syn = j_syn.astype(int)
 
 S.connect(i=i_syn, j=j_syn)
 
+
+
 if (read_weight):
     data = ""
     with open('weights.txt','r') as f:
@@ -236,35 +238,35 @@ else:
 #weight_matrix = weight_matrix / row_sums
 
 
-plt.figure(1)
-count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
-plt.xlim(min(bins)*1.1, max(bins)*1.1)
-plt.ylim(0, max(count)*1.1)
-plt.grid(True)
-plt.title("Creation time after Norm")
-plt.savefig(figpath+'3_weight_creation.png')
-plt.close(1)
+#plt.figure(1)
+#count, bins, ignored = plt.hist(np.reshape(weight_matrix, (N0_Neurons*N1_Neurons)), N0_Neurons*N1_Neurons, density=True)
+#plt.xlim(min(bins)*1.1, max(bins)*1.1)
+#plt.ylim(0, max(count)*1.1)
+#plt.grid(True)
+#plt.title("Creation time after Norm")
+#plt.savefig(figpath+'3_weight_creation.png')
+#plt.close(1)
 
 
-S.wmax  = 1
-S.wmin  = 0
-S.wmax  = 1
-S.wmin  = 0
-S.delay = 1*ms
-S.delay = 1*ms
-
+S.wmax     = 1
+S.wmin     = 0
+#S.delay   = 1*ms
+minDelay   = 0*ms
+maxDelay   = 3*ms
+deltaDelay = maxDelay - minDelay
+S.delay    = 'minDelay + rand() * deltaDelay'
 
 S2 = Synapses(N1, N1,
                     '''
                     w : 1
                     ''',
                     on_pre='''
-                    v_post += w
+                    v_post = clip(v_post+w,V_reset,1)
                     ''',
                     method='linear')
 
 S2.connect('i != j')
-S2.w = -0.3
+S2.w = -0.15
 S2.delay = 0*ms
 
 net.add(N0)
@@ -536,9 +538,11 @@ weights_to_plot = [  stat_freq[1].argmax(),
 #[158, 159, 155, 156]
 weights_to_plot = []
 
-for row in np.arange(12,16):
-    for col in np.arange(12,16):
+for row in np.arange(23,24):
+    for col in np.arange(6,27):
         weights_to_plot.append(row*28+col)
+
+weights_to_plot = np.arange(650,700+1)
 
 print(weights_to_plot)
 
@@ -586,6 +590,19 @@ if(print_weights):
 
     plt.savefig(figpath + '10_weights_stdp.png')
     plt.close(1)
+
+
+
+    for n1 in range(N1_Neurons):
+        plt.figure(1)
+        weight_img = np.reshape(S.w[:,n1], (28,28));
+        max_w      = weight_img.max()
+        weight_img = weight_img/max_w*255
+        weight_img = weight_img.astype(int)
+        plt.imshow(avg_img, cmap=plt.get_cmap('gray'))
+        plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
+        plt.close(1)
+
 
 
 with open('outfile.txt','w') as f:
