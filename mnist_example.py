@@ -56,8 +56,8 @@ def printmatrix(mymatrix, myfile):
 
 figpath = './figures/'
 
-print_input_stream = True
-print_output_membrana = True
+print_input_stream = False
+print_output_membrana = False
 print_weights = False
 print_traces = False
 print_stats = False
@@ -177,7 +177,7 @@ net     = Network()
 N0_Neurons = X_size; #28x28
 N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
-N1_Neurons = 2;
+N1_Neurons = 20;
 
 N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold', reset=eqs_reset, refractory=10*ms, method='exact')
 
@@ -254,7 +254,7 @@ else:
 #plt.close(1)
 
 
-S.wmax     = 1
+S.wmax     = Threshold*0.5
 S.wmin     = 0
 #S.delay   = 1*ms
 minDelay   = 0*ms
@@ -306,9 +306,9 @@ net.run(0*ms)
 #        S.w['i==n0 and j==n1'] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
 #
 weight_matrix_flat =  np.reshape(weight_matrix,(N0_Neurons*N1_Neurons))
-S.w = weight_matrix_flat
+S.w      = weight_matrix_flat
 S.reward = 1
-avg_img = np.zeros(my_train_X_flat.shape[1])
+avg_img  = np.zeros(my_train_X_flat.shape[1])
 
 for x_flat in my_train_X_flat:
 
@@ -411,9 +411,9 @@ if(print_input_stream):
     plt.title("Input Neuron Stream")
 
     if(print_input_stream):
-        color = '.k' if train_y[i_count] == 1 else '.b'
+        color = '.k'
         for k in range(N0_Neurons):
-            sample_time_condition = (N0mon.spike_trains()[k]/ms < end_plot*single_example_time) & (N0mon.spike_trains()[k]/ms >= >= plot_start_time*single_example_time)
+            sample_time_condition = (N0mon.spike_trains()[k]/ms < end_plot*single_example_time) & (N0mon.spike_trains()[k]/ms >= plot_start_time*single_example_time)
             N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
             N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
             plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
@@ -532,23 +532,25 @@ if(print_weights):
     plt.savefig(figpath + '10_weights_stdp.png')
     plt.close(1)
 
-    S_w = S.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
-    max_w = S_w.max()
-    for n1 in range(N1_Neurons):
-        plt.figure(1)
-        weight_img = np.reshape(S.w[:,n1], (28,28));
-        weight_img = weight_img/max_w*255
-        weight_img = weight_img.astype(int)
-        plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-        plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
-        plt.close(1)
+weight_matrix = S.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
+max_w = weight_matrix.max()
+for n1 in range(N1_Neurons):
+    plt.figure(1)
+    weight_img = np.reshape(S.w[:,n1], (28,28));
+    print("N" + str(n1) + " max: " + str(weight_img.max()) + " at index " + str(weight_img.argmax()))
+    weight_img = weight_img/max_w*255
+    weight_img = weight_img.astype(int)
+    plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
+    plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
+    plt.close(1)
 
 
-
-with open('outfile.txt','w') as f:
-    for line in weight_matrix:
-        np.savetxt(f, line)
-
+weight_matrix = np.reshape(weight_matrix,(N1_Neurons,28,28))
+for n1 in np.arange(N1_Neurons):
+    sourceFile = open('weights_'+str(n1)+'.txt', 'w')
+    #printmatrix(np.around(weight_matrix[n1], decimals=4),sourceFile)
+    printmatrix(weight_matrix[n1],sourceFile)
+    sourceFile.close()
 
 if(print_traces):
     plt.figure(1)
@@ -564,7 +566,6 @@ if(print_traces):
             state_plot = []
             state2_plot = []
 
-            color = 'k' if train_y[i_count] == 1 else 'b'
             sample_time_condition = (Sstate.t/ms < end_plot*single_example_time) & (Sstate.t/ms >= plot_start_time*single_example_time)
             sample_time_index     = np.where(sample_time_condition)[0]
             Sstate_times_no_plot  = Sstate.t[sample_time_condition]
