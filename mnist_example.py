@@ -58,8 +58,8 @@ figpath = './figures/'
 
 print_input_stream = True
 print_output_membrana = True
-print_weights = True
-print_traces = True
+print_weights = False
+print_traces = False
 print_stats = False
 read_weight = False
 store_weight = False
@@ -149,7 +149,7 @@ single_example_time   = 25
 taupre  = 7 * ms
 taupost = 7 * ms
 
-Threshold = 0.06
+Threshold = 0.052
 V_reset   = -0.1
 A_reset   = +0.1
 
@@ -160,6 +160,7 @@ da/dt = -a/taus: 1
 tau : second
 taus : second
 taut : second
+sumw : 1
 '''
 eqs_reset = '''
                 v = V_reset
@@ -176,14 +177,14 @@ net     = Network()
 N0_Neurons = X_size; #28x28
 N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
 
-N1_Neurons = 4;
+N1_Neurons = 2;
 
 N1      = NeuronGroup(N1_Neurons, eqs, threshold='v>Threshold', reset=eqs_reset, refractory=10*ms, method='exact')
 
 N1.tau  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
 
-N1.taus = 30*ms
+N1.taus = 20*ms
 N1.taut = 150*ms
 N1.v    = 0
 N1.a    = 0
@@ -196,14 +197,17 @@ S = Synapses(N0, N1,
                     reward : 1
                     dapre/dt = -apre/taupre : 1 (clock-driven)
                     dapost/dt = -apost/taupost : 1 (clock-driven)
+                    sumw_post = w   : 1   (summed)
                     ''',
                     on_pre='''
                     v_post = v_post+w
                     apre += reward*(0.0003)
+                    w = w/sumw_post
                     w =  clip(w+apost,wmin,wmax)
                     ''',
                     on_post='''
                     apost += reward*(-0.0005)
+                    w = w/sumw_post
                     w =  clip(w+apre,wmin,wmax)
                     ''',
                     method='linear')
@@ -232,7 +236,9 @@ if (read_weight):
         data = np.reshape(data,(N0_Neurons,N1_Neurons))
         weight_matrix = data
 else:
-    weight_matrix = np.random.normal(loc=1/N0_Neurons, scale=1/N0_Neurons*0.1, size=(N0_Neurons,N1_Neurons))
+    weight_matrix = np.zeros((N0_Neurons,N1_Neurons))
+    for n1 in np.arange(N1_Neurons):
+        weight_matrix[:,n1] = np.random.normal(loc=1/N0_Neurons, scale=1/N0_Neurons*0.1, size=(N0_Neurons))
 
 #row_sums = weight_matrix.sum(axis=0)
 #weight_matrix = weight_matrix / row_sums
@@ -300,7 +306,7 @@ net.run(0*ms)
 #        S.w['i==n0 and j==n1'] = weight_matrix[n0,n1] #as soon as it spikes, the output spikes too
 #
 weight_matrix_flat =  np.reshape(weight_matrix,(N0_Neurons*N1_Neurons))
-S.w =weight_matrix_flat
+S.w = weight_matrix_flat
 S.reward = 1
 avg_img = np.zeros(my_train_X_flat.shape[1])
 
@@ -317,6 +323,9 @@ for x_flat in my_train_X_flat:
     n0_s    = np.where(x_flat > 0)[0]
     n0_t    = ts_time + (256 - x_flat[n0_s])*10/255
 
+    n0_s_list = np.concatenate((n0_s_list, n0_s))
+    n0_t_list = np.concatenate((n0_t_list, n0_t))
+
     stat_freq[train_y[i_count]][n0_s]  = stat_freq[train_y[i_count]][n0_s] + 1
     stat_power[train_y[i_count]]       = stat_power[train_y[i_count]] + x_flat
     avg_img                            = avg_img + x_flat
@@ -324,86 +333,27 @@ for x_flat in my_train_X_flat:
     if(i_count % 100 == 0):
         print("Trained " + str(i_count) + " samples")
 
-
-
-    if(print_input_stream):
-        n0_s_list.append(n0_s)
-        n0_t_list.append(n0_t)
-
-    N0.set_spikes(n0_s, n0_t*ms)
-
-    reward_s = +1
-    #for n1 in range(N1_Neurons):
-    #    if (n1 == 0):
-    #        reward_s = +1 if train_y[i_count] == 1 else -1.3
-    #    elif (n1 == 1):
-    #        reward_s = +1 if train_y[i_count] == 2 else -1.3
-
-    #    for n0 in range(N0_Neurons):
-    #        S.reward['i==n0 and j==n1'] = reward_s
-    
-
-    if(ts_time == start_mon):
-        print("Add monitors at time " + str(ts_time))
-        if(print_input_stream):
-            N0mon    = SpikeMonitor(N0)
-            net.add(N0mon)
-
-        N1mon    = SpikeMonitor(N1)
-        net.add(N1mon)
-
-        if(print_output_membrana):
-            N1state  = StateMonitor(N1, ['v'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
-            net.add(N1state)
-
-        if(print_traces or print_weights):
-            Sstate   = StateMonitor(S, ['w','apre', 'apost'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
-            net.add(Sstate)
-
-    net.run(single_example_time*ms)
-
-    #for n0 in range(N0_Neurons):
-    #    for n1 in range(N1_Neurons):
-    #        weight_matrix[n0,n1] = S.w['i==n0 and j==n1']
-    #weight_matrix.flatten = S.w
-    ##ERROR IN CPP AS YOU CANNOT READ
-    #weight_matrix_flat = S.w
-
-    if(i_count % 20 == 0 and store_weight):
-        plt.figure(1)
-        count, bins, ignored = plt.hist(weight_matrix_flat, N0_Neurons*N1_Neurons, density=True)
-        plt.xlim(min(bins)*1.1, max(bins)*1.1)
-        plt.ylim(0, max(count)*1.1)
-        plt.grid(True)
-        plt.title("After Run "+str(i_count))
-        plt.savefig(figpath+'4_weight_after_run'+str(i_count)+'.png')
-        plt.close(1)
-
-
-    #if(weight_matrix.max() > max_w):
-    #    max_w = weight_matrix.max()
-
-    #if(weight_matrix.min() < min_w):
-    #    min_w = weight_matrix.min()
-
-
-    #row_sums = weight_matrix.sum(axis=0)
-
-    #for n1 in range(N1_Neurons):
-    #    if row_sums[n1] != 0:
-    #        weight_matrix[:,n1] = weight_matrix[:,n1] / row_sums[n1]
-
-    ##for n0 in range(N0_Neurons):
-    ##    for n1 in range(N1_Neurons):
-    ##        S.w['i==n0 and j==n1'] = weight_matrix[n0,n1]
-    #S.w = weight_matrix_flat
-
     ts_time = ts_time + single_example_time
     i_count = i_count + 1
-    if(n0_debug):
-        for k in range(X_size):
-            print('Input Neuron ' + str(k) + ' spiked ' + str(len(N0mon.spike_trains()[k]/ms)))
-            print(N0mon.spike_trains()[k]/ms)
+
+N0.set_spikes(n0_s_list, n0_t_list*ms)
+
+if(print_input_stream):
+    N0mon    = SpikeMonitor(N0)
+    net.add(N0mon)
+
+N1mon    = SpikeMonitor(N1)
+net.add(N1mon)
+
+if(print_output_membrana):
+    N1state  = StateMonitor(N1, ['v'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
+    net.add(N1state)
+
+if(print_traces or print_weights):
+    Sstate   = StateMonitor(S, ['w','apre', 'apost'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
+    net.add(Sstate)
+
+net.run(training_example*single_example_time*ms)
 
 
 print("Network trained....")
@@ -449,26 +399,24 @@ if(print_stats):
 
 
 
-for c in classes:
-    color = 'k' if c == 1 else 'b'
-    print("pixel max frequency class " + str(c))
-    print("stat_freq[class][" + str(stat_freq[c].argmax()) + "] = " + str(stat_freq[c].max()))
-    print("power is " + str(stat_power[c][stat_freq[c].argmax()]))
+    for c in classes:
+        color = 'k' if c == 1 else 'b'
+        print("pixel max frequency class " + str(c))
+        print("stat_freq[class][" + str(stat_freq[c].argmax()) + "] = " + str(stat_freq[c].max()))
+        print("power is " + str(stat_power[c][stat_freq[c].argmax()]))
 
 
 if(print_input_stream):
     plt.figure(1)
     plt.title("Input Neuron Stream")
 
-    for i_count in np.arange(plot_start_time,end_plot):
-
-        if(print_input_stream):
-            color = '.k' if train_y[i_count] == 1 else '.b'
-            for k in range(N0_Neurons):
-                sample_time_condition = (N0mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N0mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
-                N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
-                N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
-                plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
+    if(print_input_stream):
+        color = '.k' if train_y[i_count] == 1 else '.b'
+        for k in range(N0_Neurons):
+            sample_time_condition = (N0mon.spike_trains()[k]/ms < end_plot*single_example_time) & (N0mon.spike_trains()[k]/ms >= >= plot_start_time*single_example_time)
+            N0mon_times_nk_plot   = N0mon.spike_trains()[k][sample_time_condition]
+            N0mon_nspikes_nk_plot = np.ones(size(N0mon_times_nk_plot))*k
+            plt.plot(N0mon_times_nk_plot/ms, N0mon_nspikes_nk_plot, color)
         #else:
         #        color = 'k-' if train_y[i_count] == 1 else 'b-'
         #        times = np.arange((i_count)*single_example_time,(i_count+1)*single_example_time,0.1)
@@ -491,7 +439,6 @@ step=int(plot_step_time*10);
 if(print_output_membrana):
     plt.figure(1)
 
-
     for n1 in range(N1_Neurons):
 
         ax1 = plt.subplot2grid((N1_Neurons,1), (n1,0))
@@ -500,18 +447,15 @@ if(print_output_membrana):
         time_plot = []
         state_plot = []
 
-        for i_count in np.arange(plot_start_time,end_plot):
+        sample_time_condition = (N1state.t/ms < end_plot*single_example_time) & (N1state.t/ms >= plot_start_time*single_example_time)
+        sample_time_index     = np.where(sample_time_condition)[0]
+        N1state_times_no_plot = N1state.t[sample_time_condition]
 
-            sample_time_condition = (N1state.t/ms < (i_count+1)*single_example_time) & (N1state.t/ms >= (i_count)*single_example_time)
-            sample_time_index     = np.where(sample_time_condition)[0]
-            N1state_times_no_plot = N1state.t[sample_time_condition]
+        sample_time_index     = sample_time_index[0:-1:step];
+        N1state_times_no_plot = N1state_times_no_plot[0:-1:step];
 
-            sample_time_index     = sample_time_index[0:-1:step];
-            N1state_times_no_plot = N1state_times_no_plot[0:-1:step];
-
-            time_plot = np.concatenate((time_plot, N1state_times_no_plot/ms))
-            state_plot = np.concatenate((state_plot, N1state.v[n1][sample_time_index]))
-
+        time_plot  = N1state_times_no_plot/ms
+        state_plot = N1state.v[n1][sample_time_index]
 
         plt.plot(time_plot, state_plot, label='N1::'+str(n1))
 
@@ -542,7 +486,7 @@ for row in np.arange(23,24):
     for col in np.arange(6,27):
         weights_to_plot.append(row*28+col)
 
-weights_to_plot = np.arange(650,700+1)
+weights_to_plot = np.arange(675,700+1)
 
 print(weights_to_plot)
 
@@ -561,24 +505,21 @@ if(print_weights):
             time_plot = []
             state_plot = []
 
-            for i_count in np.arange(plot_start_time,end_plot):
+            sample_time_condition = (Sstate.t/ms < end_plot*single_example_time) & (Sstate.t/ms >= plot_start_time*single_example_time)
+            sample_time_index     = np.where(sample_time_condition)[0]
+            Sstate_times_no_plot  = Sstate.t[sample_time_condition]
 
-                sample_time_condition = (Sstate.t/ms < (i_count+1)*single_example_time) & (Sstate.t/ms >= (i_count)*single_example_time)
-                sample_time_index     = np.where(sample_time_condition)[0]
-                Sstate_times_no_plot  = Sstate.t[sample_time_condition]
+            sample_time_index     = sample_time_index[0:-1:step];
+            Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
 
-                sample_time_index     = sample_time_index[0:-1:step];
-                Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
+            if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min() < min_w:
+                min_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min();
 
-                if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min() < min_w:
-                    min_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].min();
+            if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max() > max_w:
+                max_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max();
 
-                if Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max() > max_w:
-                    max_w = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index].max();
-
-                time_plot = np.concatenate((time_plot, Sstate_times_no_plot/ms))
-                state_plot = np.concatenate((state_plot, Sstate.w[weights+(n1*N0_Neurons)][sample_time_index]))
-
+            time_plot  = Sstate_times_no_plot/ms
+            state_plot = Sstate.w[weights+(n1*N0_Neurons)][sample_time_index]
 
             plt.plot(time_plot, state_plot,label='N1::'+str(n1))
             plt.grid(True)
@@ -591,15 +532,14 @@ if(print_weights):
     plt.savefig(figpath + '10_weights_stdp.png')
     plt.close(1)
 
-
-
+    S_w = S.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
+    max_w = S_w.max()
     for n1 in range(N1_Neurons):
         plt.figure(1)
         weight_img = np.reshape(S.w[:,n1], (28,28));
-        max_w      = weight_img.max()
         weight_img = weight_img/max_w*255
         weight_img = weight_img.astype(int)
-        plt.imshow(avg_img, cmap=plt.get_cmap('gray'))
+        plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
         plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
         plt.close(1)
 
@@ -624,19 +564,17 @@ if(print_traces):
             state_plot = []
             state2_plot = []
 
-            for i_count in np.arange(plot_start_time,end_plot):
+            color = 'k' if train_y[i_count] == 1 else 'b'
+            sample_time_condition = (Sstate.t/ms < end_plot*single_example_time) & (Sstate.t/ms >= plot_start_time*single_example_time)
+            sample_time_index     = np.where(sample_time_condition)[0]
+            Sstate_times_no_plot  = Sstate.t[sample_time_condition]
 
-                color = 'k' if train_y[i_count] == 1 else 'b'
-                sample_time_condition = (Sstate.t/ms < (i_count+1)*single_example_time) & (Sstate.t/ms >= (i_count)*single_example_time)
-                sample_time_index     = np.where(sample_time_condition)[0]
-                Sstate_times_no_plot  = Sstate.t[sample_time_condition]
+            sample_time_index     = sample_time_index[0:-1:step];
+            Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
 
-                sample_time_index     = sample_time_index[0:-1:step];
-                Sstate_times_no_plot  = Sstate_times_no_plot[0:-1:step];
-
-                time_plot = np.concatenate((time_plot, Sstate_times_no_plot/ms))
-                state_plot = np.concatenate((state_plot, Sstate.apre[weights+(n1*N0_Neurons)][sample_time_index]))
-                state2_plot = np.concatenate((state2_plot, Sstate.apost[weights+(n1*N0_Neurons)][sample_time_index]))
+            time_plot = np.concatenate((time_plot, Sstate_times_no_plot/ms))
+            state_plot = np.concatenate((state_plot, Sstate.apre[weights+(n1*N0_Neurons)][sample_time_index]))
+            state2_plot = np.concatenate((state2_plot, Sstate.apost[weights+(n1*N0_Neurons)][sample_time_index]))
 
 
             plt.plot(time_plot, state_plot, label='N1::'+str(n1))
