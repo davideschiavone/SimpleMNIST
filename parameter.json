@@ -1,10 +1,15 @@
 {
-	"device":"cpp",
-	"training_example":-1,
+	"N1_Neurons":4,
+	"N2_Neurons":2,
+	"device":"python",
+	"training_example":10,
 	"monitor_step":0.2,
 	"plot_start_time":-10,
 	"plot_duration_time":10,
 	"plot_step_time":0.1,
 	"testing_example":10,
-	"testing_phase": true
+	"testing_phase": false,
+	"learning_1_phase": false,
+	"learning_2_phase": true
+
 }
