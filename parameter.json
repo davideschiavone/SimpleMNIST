@@ -1,8 +1,8 @@
 {
-	"N1_Neurons":4,
-	"N2_Neurons":2,
-	"device":"python",
-	"training_example":10,
+	"N1_Neurons":100,
+	"N2_Neurons":10,
+	"device":"cuda",
+	"training_example":1500,
 	"monitor_step":0.2,
 	"plot_start_time":-10,
 	"plot_duration_time":10,
