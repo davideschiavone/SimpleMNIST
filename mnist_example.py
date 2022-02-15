@@ -1,10 +1,10 @@
 from brian2 import *
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.datasets import mnist
 import sys
 import json
 from decimal import Decimal
+from datasetsequence import DataSetSequence
 
 np.set_printoptions(formatter={'float': lambda x: "{0:0.1f}".format(x)})
 
@@ -67,7 +67,7 @@ def scanmatrix(mymatrix, myfile):
 figpath = './figures/'
 
 print_neuron_l0 = False
-print_l1_membrana = False
+print_l1_membrana = True
 print_l1_weights = False
 print_l1_traces = False
 print_l2_membrana = True
@@ -85,8 +85,14 @@ start_scope()
 
 np.random.seed(2021)
 
+batch_number       = int(sys.argv[1])
+previous_state     = sys.argv[2] == "true"
+print("Using previous state: " + str(previous_state))
+dss_train = DataSetSequence(128,'Batches/train')
+dss_test  = DataSetSequence(128,'Batches/test')
 
-(train_X, train_y), (test_X, test_y) = mnist.load_data()
+(train_X, train_y) = dss_train.getItem(batch_number)
+(test_X, test_y)   = dss_test.getItem(batch_number)
 
 classes       = np.arange(0,10)
 classes_color = ['y', 'k', 'b', 'r', 'g', 'c', 'm','k', 'b', 'r' ]
@@ -118,11 +124,12 @@ X_size          = 28*28
 X_Train_Samples = train_X.shape[0]
 X_Test_Samples  = test_X.shape[0]
 
-
 N1_Neurons         = parameter['N1_Neurons']
 N2_Neurons         = parameter['N2_Neurons']
 
+first_example      = parameter['first_example']
 training_example   = X_Train_Samples if parameter['training_example']==-1 else parameter['training_example'];
+
 monitor_step       = parameter['monitor_step']
 plot_step_time     = parameter['plot_step_time']
 testing_example    = X_Test_Samples if parameter['testing_example']==-1 else parameter['testing_example'];
@@ -191,6 +198,22 @@ if(plt_example_mnist):
             plt.savefig(figpath + '2_first_nine_per_class_' + str(k) + '_test.png')
         plt.close(1)
 
+if previous_state:
+    with open('./previous_state.npy', 'rb') as f:
+        N1v = np.load(f)
+        N1a = np.load(f)
+        N2v = np.load(f)
+        N2a = np.load(f)
+        if learning_1_phase:
+            S010w     = np.load(f)
+            S010apre  = np.load(f)
+            S010apost = np.load(f)
+        if learning_2_phase:
+            S120w     = np.load(f)
+            S120apre  = np.load(f)
+            S120apost = np.load(f)
+
+
 '''
 we want to have 40FPS
 thus, here we use 25ms
@@ -201,7 +224,7 @@ and 10ms for the resting
 single_example_time   = 25
 
 
-net     = Network()
+net        = Network()
 
 N0_Neurons = X_size; #28x28
 N0         = SpikeGeneratorGroup(N0_Neurons, [0], [0]*ms)
@@ -230,8 +253,13 @@ N1         = NeuronGroup(N1_Neurons, eqs, threshold='v>Thresholdl1', reset=eqs_r
 N1.taul1  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                  #you can also increase the spacex0x1 and keep tau to 10ms for example
 N1.tausl1 = 20*ms
-N1.v      = 0
-N1.a      = 0
+
+if previous_state:
+    N1.v = N1v
+    N1.a = N1a
+else:
+    N1.v = 0
+    N1.a = 0
 
 if learning_1_phase:
     S010 = Synapses(N0, N1,
@@ -290,10 +318,13 @@ maxDelay   = 3*ms
 deltaDelay = maxDelay - minDelay
 S010.delay = 'minDelay + rand() * deltaDelay'
 
-if learning_1_phase:
+
+if learning_1_phase and previous_state == False:
     weight_matrix = np.zeros((N0_Neurons,N1_Neurons))
     for n1 in np.arange(N1_Neurons):
         weight_matrix[:,n1] = np.random.normal(loc=1/N0_Neurons, scale=1/N0_Neurons*0.1, size=(N0_Neurons))
+elif learning_1_phase and previous_state:
+        weight_matrix = S010w
 else:
     weight_matrix = np.zeros((N1_Neurons,28,28))
     for n1 in np.arange(N1_Neurons):
@@ -301,10 +332,12 @@ else:
         scanmatrix(weight_matrix[n1],sourceFile)
         sourceFile.close()
 
-if learning_2_phase:
+if learning_2_phase and previous_state == False:
     weight_matrix2 = np.zeros((N1_Neurons,N2_Neurons))
     for n2 in np.arange(N2_Neurons):
         weight_matrix2[:,n2] = np.random.normal(loc=1/N1_Neurons, scale=1/N1_Neurons*0.1, size=(N1_Neurons))
+elif learning_2_phase and previous_state:
+        weight_matrix2 = S120w
 else:
     print("NOT IMPLEMENTED YET")
 
@@ -336,9 +369,14 @@ if learning_2_phase:
     N2.taul1  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
                      #you can also increase the spacex0x1 and keep tau to 10ms for example
     N2.tausl1 = 20*ms
-    N2.v      = 0
-    N2.a      = 0
     tau_reward = 25*ms
+
+    if previous_state:
+        N2.v = N2v
+        N2.a = N2a
+    else:
+        N1.v = 0
+        N1.a = 0
 
     S120 = Synapses(N1, N2,
                         '''
@@ -426,10 +464,10 @@ if learning_2_phase:
 start_mon = plot_start_time*single_example_time
 
 if not testing_phase:
-    my_set_X_flat  = train_X_flat[0:set_size];
+    my_set_X_flat  = train_X_flat[first_example:set_size];
     print("Network created.... Start training it with " + str(set_size) + " samples")
 else:
-    my_set_X_flat  = test_X_flat[0:set_size];
+    my_set_X_flat  = test_X_flat[first_example:set_size];
     print("Network created.... Start testing it with " + str(set_size) + " samples")
 
 
@@ -444,6 +482,14 @@ weight_matrix_flat  = np.reshape(weight_matrix,(N0_Neurons*N1_Neurons))
 S010.w              = weight_matrix_flat
 weight_matrix2_flat = np.reshape(weight_matrix2,(N1_Neurons*N2_Neurons))
 S120.w              = weight_matrix2_flat
+
+if previous_state:
+    if learning_1_phase:
+        S010.apre  = S010apre
+        S010.apost = S010apost
+    if learning_2_phase:
+        S120.apre  = S120apre
+        S120.apost = S120apost
 
 
 n0_s_list = []
@@ -535,7 +581,7 @@ if(print_l2_traces or print_l2_weights):
         S120state   = StateMonitor(S120, ['w'], record=np.arange(N1_Neurons*N2_Neurons), dt=monitor_step*ms)
     net.add(S120state)
 
-net.run(set_size*single_example_time*ms)
+net.run((set_size*single_example_time + 1)*ms)
 
 if not testing_phase:
     print("Network trained....")
@@ -602,8 +648,8 @@ if(print_l1_membrana):
     with open('./Weights/l1_membrana_time.npy', 'wb') as f:
         np.save(f, time_plot)
     with open('./Weights/l1_membrana_value.npy', 'wb') as f:
-        for n2 in range(N2_Neurons):
-            state_plot = N2state.v[n1][sample_time_index]
+        for n1 in range(N1_Neurons):
+            state_plot = N1state.v[n1][sample_time_index]
             np.save(f, state_plot)
 
 if(print_l2_membrana):
@@ -689,6 +735,22 @@ if(print_l2_traces and learning_2_phase):
                 np.save(f, state2_plot)
                 np.save(f, state3_plot)
                 np.save(f, state4_plot)
+
+
+with open('./previous_state.npy', 'wb') as f:
+    np.save(f, np.array(N1.v))
+    np.save(f, np.array(N1.a))
+    np.save(f, np.array(N2.v))
+    np.save(f, np.array(N2.a))
+    if learning_1_phase:
+        np.save(f, np.array(S010.w))
+        np.save(f, np.array(S010.apre))
+        np.save(f, np.array(S010.apost))
+    if learning_2_phase:
+        np.save(f, np.array(S120.w))
+        np.save(f, np.array(S120.apre))
+        np.save(f, np.array(S120.apost))
+
 
 
 exit();

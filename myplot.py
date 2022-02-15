@@ -32,7 +32,7 @@ if(print_neuron_l0):
         plt.title("Input Neuron Stream")
         plt.plot(n0_times, n0_indices, '.k')
         plt.ylim((-0.5,N0_Neurons))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.xlabel('Time (ms)')
         plt.ylabel('Neuron index');
         if not testing_phase:
@@ -50,7 +50,7 @@ if(print_neuron_reward):
         plt.title("Reward Neuron Stream")
         plt.plot(nr_times, nr_indices, '*r')
         plt.ylim((-0.5,Reward_Neurons))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.xlabel('Time (ms)')
         plt.ylabel('Neuron index');
         if not testing_phase:
@@ -66,7 +66,7 @@ if(print_neuron_l1):
         plt.title("L1 Neuron Stream")
         plt.plot(n1_times, n1_indices, '.k')
         plt.ylim((-0.5,N1_Neurons))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.xlabel('Time (ms)')
         plt.ylabel('Neuron index');
         if not testing_phase:
@@ -84,7 +84,7 @@ if(print_neuron_l2):
         plt.title("L2 Neuron Stream")
         plt.plot(n2_times, n2_indices, '.k')
         plt.ylim((-0.5,N2_Neurons))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.xlabel('Time (ms)')
         plt.ylabel('Neuron index');
         if not testing_phase:
@@ -114,7 +114,7 @@ if(print_l1_membrana):
 
                 plt.xlabel('Time (ms)')
                 plt.ylabel('V')
-                plt.xlim((plot_start, plot_end))
+                plt.xlim((plot_start, plot_end+1))
                 plt.ylim((-0.22, 0.12))
                 plt.grid(True)
                 if not testing_phase:
@@ -126,7 +126,7 @@ if(print_l1_membrana):
         if ( (n1-1) % 4 < 3):
             plt.xlabel('Time (ms)')
             plt.ylabel('V')
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
             plt.ylim((-0.22, 0.12))
             plt.grid(True)
             if not testing_phase:
@@ -158,7 +158,7 @@ if(print_l2_membrana):
                 stop_counter = 0
                 plt.xlabel('Time (ms)')
                 plt.ylabel('V')
-                plt.xlim((plot_start, plot_end))
+                plt.xlim((plot_start, plot_end+1))
                 plt.ylim((-0.22, 0.12))
                 plt.grid(True)
                 if not testing_phase:
@@ -170,7 +170,7 @@ if(print_l2_membrana):
         if (stop_counter):
             plt.xlabel('Time (ms)')
             plt.ylabel('V')
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
             plt.ylim((-0.22, 0.12))
             plt.grid(True)
             if not testing_phase:
@@ -178,7 +178,6 @@ if(print_l2_membrana):
             else:
                 plt.savefig(figpath + 'l2_membrana_value_test' + str(fig_counter-1) + '.png')
             plt.close(1)
-
 
 if(print_l2_weights):
     with open('./Weights/l2_weights_time.npy', 'rb') as f:
@@ -192,6 +191,8 @@ if(print_l2_weights):
                 state_plot = np.load(f)
 
                 if (weights % 8 == 0):
+                    min_w = +10
+                    max_w = -10
                     plt.figure(1)
                     stop_counter = 1
                     fig_counter = fig_counter + 1
@@ -200,11 +201,17 @@ if(print_l2_weights):
                 ax1.set_title(str(weights)+"::"+str(n2))
                 plt.plot(time_plot, state_plot)
 
+                if(state_plot.min() < min_w):
+                    min_w = state_plot.min()
+                if(state_plot.max() > max_w):
+                    max_w = state_plot.max()
+
+                plt.xlim((plot_start, plot_end+1))
+                plt.ylim((min_w*0.9, max_w*1.1))
+                plt.grid(True)
+
                 if (weights % 8 == 7):
                     stop_counter = 0
-                    plt.xlim((plot_start, plot_end))
-                    plt.ylim((-0.22, 0.12))
-                    plt.grid(True)
                     if not testing_phase:
                         plt.savefig(figpath + 'l2_weight_value' + str(fig_counter-1) + '.png')
                     else:
@@ -214,7 +221,7 @@ if(print_l2_weights):
         if (stop_counter):
             plt.xlabel('Time (ms)')
             plt.ylabel('V')
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
             plt.ylim((-0.22, 0.12))
             plt.grid(True)
             if not testing_phase:
@@ -222,6 +229,8 @@ if(print_l2_weights):
             else:
                 plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
             plt.close(1)
+
+
 
 exit()
 
@@ -234,8 +243,8 @@ if(print_l1_weights):
         ax1 = plt.subplot2grid((N1_Neurons,1), (n1,0))
         ax1.set_title("N" + str(n1) + " Weights")
 
-        min_w = +1
-        max_w = -1
+        min_w = +10
+        max_w = -10
 
         for weights in weights_to_plot:
             time_plot = []
@@ -263,7 +272,7 @@ if(print_l1_weights):
         plt.xlabel('Time (ms)')
         plt.ylabel('Weights')
         plt.ylim((min_w*0.9,max_w*1.1))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
 
     if learning_1_phase:
         plt.savefig(figpath + '10_weights_stdp.png')
@@ -341,7 +350,7 @@ if(print_weights):
             plt.xlabel('Time (ms)')
             plt.ylabel('Weights')
             plt.ylim((min_w*0.9,max_w*1.1))
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
             plt.grid(True)
             if learning_2_phase:
                 plt.savefig(figpath + '10_weights_stdp_reward_' + str(fig_counter-1) + '.png')
@@ -353,7 +362,7 @@ if(print_weights):
         plt.xlabel('Time (ms)')
         plt.ylabel('Weights')
         plt.ylim((min_w*0.9,max_w*1.1))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.grid(True)
         if learning_2_phase:
             plt.savefig(figpath + '10_weights_stdp_reward_' + str(fig_counter-1) + '.png')
@@ -394,7 +403,7 @@ if(print_l1_traces and learning_1_phase):
             plt.xlabel('Time (ms)')
             plt.ylabel('Traces')
             plt.ylim((-0.0012,+0.0008))
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
     plt.savefig(figpath + '11_traces_stdp.png')
     plt.close(1)
 
@@ -441,7 +450,7 @@ if(print_traces and learning_2_phase):
             plt.xlabel('Time (ms)')
             plt.ylabel('Traces')
             plt.ylim((-0.0012,+0.0008))
-            plt.xlim((plot_start, plot_end))
+            plt.xlim((plot_start, plot_end+1))
             plt.grid(True)
             plt.savefig(figpath + '11_traces_stdp_reward' + str(fig_counter-1) + '.png')
             plt.close(1)
@@ -450,7 +459,7 @@ if(print_traces and learning_2_phase):
         plt.xlabel('Time (ms)')
         plt.ylabel('Traces')
         plt.ylim((-0.0012,+0.0008))
-        plt.xlim((plot_start, plot_end))
+        plt.xlim((plot_start, plot_end+1))
         plt.grid(True)
         plt.savefig(figpath + '11_traces_stdp_reward' + str(fig_counter-1) + '.png')
         plt.close(1)
@@ -468,7 +477,7 @@ if print_neuron_l1:
             N1mon_nspikes_nk_plot = np.ones(size(N1mon_times_nk_plot))*k
             plt.plot(N1mon_times_nk_plot/ms, N1mon_nspikes_nk_plot, '*'+color)
     plt.ylim((0,N1_Neurons))
-    plt.xlim((plot_start, plot_end))
+    plt.xlim((plot_start, plot_end+1))
     plt.xlabel('Time (ms)')
     plt.ylabel('Neuron index');
     plt.grid(True)
@@ -490,7 +499,7 @@ for i_count in np.arange(plot_start_time,end_plot):
         N2mon_nspikes_nk_plot = np.ones(size(N2mon_times_nk_plot))*k
         plt.plot(N2mon_times_nk_plot/ms, N2mon_nspikes_nk_plot, '*'+color)
 plt.ylim((0,N2_Neurons))
-plt.xlim((plot_start, plot_end))
+plt.xlim((plot_start, plot_end+1))
 plt.xlabel('Time (ms)')
 plt.ylabel('Neuron index');
 plt.grid(True)
