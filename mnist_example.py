@@ -67,15 +67,18 @@ def scanmatrix(mymatrix, myfile):
 figpath = './figures/'
 
 print_neuron_l0 = False
-print_l1_membrana = True
+
+print_l1_membrana = False
 print_l1_weights = False
 print_l1_traces = False
+print_neuron_l1 = False
+
 print_l2_membrana = True
 print_l2_weights = True
 print_l2_traces = True
-print_neuron_reward = False
-print_neuron_l1 = True
+
 print_neuron_l2 = True
+print_neuron_reward = False
 
 plt_example_mnist = False
 use_only_0_and_1 = True
@@ -147,6 +150,15 @@ plot_start_time    = parameter['plot_start_time'] if parameter['plot_start_time'
 plot_duration_time = parameter['plot_duration_time'] if parameter['plot_duration_time'] <= set_size else set_size
 end_plot           = plot_start_time+plot_duration_time
 
+'''
+we want to have 40FPS
+thus, here we use 25ms
+10ms for the frame
+and 10ms for the resting
+'''
+
+single_example_time   = 25
+
 
 print('Start simulation with : ')
 print("training_example= " + str(training_example))
@@ -212,16 +224,6 @@ if previous_state:
             S120w     = np.load(f)
             S120apre  = np.load(f)
             S120apost = np.load(f)
-
-
-'''
-we want to have 40FPS
-thus, here we use 25ms
-10ms for the frame
-and 10ms for the resting
-'''
-
-single_example_time   = 25
 
 
 net        = Network()
@@ -470,6 +472,49 @@ else:
     my_set_X_flat  = test_X_flat[first_example:set_size];
     print("Network created.... Start testing it with " + str(set_size) + " samples")
 
+sim_dict = {
+            'plot_start' : plot_start_time*single_example_time,
+            'plot_end' : end_plot*single_example_time,
+            'batch_number' : batch_number
+        }
+
+parameters = {
+            'single_example_time' : single_example_time,
+            'N0_Neurons' : N0_Neurons,
+            'N1_Neurons' : N1_Neurons,
+            'N2_Neurons' : N2_Neurons,
+            'Reward_Neurons' : Reward_Neurons,
+            'testing_phase' : testing_phase,
+            'print_neuron_l0' : print_neuron_l0,
+            'print_l1_membrana' : print_l1_membrana,
+            'print_l1_weights' : print_l1_weights,
+            'print_l1_traces' : print_l1_traces,
+            'print_l2_membrana' : print_l2_membrana,
+            'print_l2_weights' : print_l2_weights,
+            'print_l2_traces' : print_l2_traces,
+            'print_neuron_reward' : print_neuron_reward,
+            'print_neuron_l1' : print_neuron_l1,
+            'print_neuron_l2' : print_neuron_l2,
+            'learning_1_phase' : learning_1_phase,
+            'learning_2_phase' : learning_2_phase,
+            }
+
+if previous_state:
+    old_sim_json_file = open('sim_values.json')
+    sim_json          = json.load(old_sim_json_file)
+    sim_json['simulations'].append(sim_dict)
+else:
+    sim_json = {
+        'parameters' : parameters,
+        'simulations': [
+            sim_dict
+        ]
+    }
+
+with open('sim_values.json', 'w') as f:
+    json_string = json.dumps(sim_json, indent=2)
+    f.write(json_string)
+
 
 net.run(0*ms)
 
@@ -593,46 +638,29 @@ if mydevice == "cpp":
 elif mydevice == "cuda":
     device.build( directory='output', compile = True, run = True, debug=False, clean = True)
 
-with open('sim_values.npy', 'wb') as f:
-        np.save(f, plot_start_time*single_example_time)
-        np.save(f, end_plot*single_example_time)
-        np.save(f, N0_Neurons)
-        np.save(f, N1_Neurons)
-        np.save(f, N2_Neurons)
-        np.save(f, Reward_Neurons)
-        np.save(f, testing_phase)
-        np.save(f, print_neuron_l0)
-        np.save(f, print_l1_membrana)
-        np.save(f, print_l1_weights)
-        np.save(f, print_l1_traces)
-        np.save(f, print_l2_membrana)
-        np.save(f, print_l2_weights)
-        np.save(f, print_l2_traces)
-        np.save(f, print_neuron_reward)
-        np.save(f, print_neuron_l1)
-        np.save(f, print_neuron_l2)
+file_mode = 'ab' if previous_state else 'wb'
 
 if(print_neuron_l0):
     n0_indices, n0_times = N0mon.it
-    with open('./Weights/l0_stream.npy', 'wb') as f:
+    with open('./Weights/l0_stream.npy', file_mode) as f:
         np.save(f, n0_times)
         np.save(f, n0_indices)
 
 if(print_neuron_reward):
     nreward_indices, nreward_times = NRewardmon.it
-    with open('./Weights/lreward_stream.npy', 'wb') as f:
+    with open('./Weights/lreward_stream.npy', file_mode) as f:
         np.save(f, nreward_times)
         np.save(f, nreward_indices)
 
 if(print_neuron_l1):
     n1_indices, n1_times = N1mon.it
-    with open('./Weights/l1_stream.npy', 'wb') as f:
+    with open('./Weights/l1_stream.npy', file_mode) as f:
         np.save(f, n1_times)
         np.save(f, n1_indices)
 
 if(print_neuron_l2):
     n2_indices, n2_times = N2mon.it
-    with open('./Weights/l2_stream.npy', 'wb') as f:
+    with open('./Weights/l2_stream.npy', file_mode) as f:
         np.save(f, n2_times)
         np.save(f, n2_indices)
 
@@ -645,9 +673,9 @@ if(print_l1_membrana):
     sample_time_index     = sample_time_index[0:-1:step];
     N1state_times_no_plot = N1state_times_no_plot[0:-1:step];
     time_plot             = N1state_times_no_plot/ms
-    with open('./Weights/l1_membrana_time.npy', 'wb') as f:
+    with open('./Weights/l1_membrana_time.npy', file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l1_membrana_value.npy', 'wb') as f:
+    with open('./Weights/l1_membrana_value.npy', file_mode) as f:
         for n1 in range(N1_Neurons):
             state_plot = N1state.v[n1][sample_time_index]
             np.save(f, state_plot)
@@ -659,9 +687,9 @@ if(print_l2_membrana):
     sample_time_index     = sample_time_index[0:-1:step];
     N2state_times_no_plot = N2state_times_no_plot[0:-1:step];
     time_plot             = N2state_times_no_plot/ms
-    with open('./Weights/l2_membrana_time.npy', 'wb') as f:
+    with open('./Weights/l2_membrana_time.npy', file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l2_membrana_value.npy', 'wb') as f:
+    with open('./Weights/l2_membrana_value.npy', file_mode) as f:
         for n2 in range(N2_Neurons):
             state_plot = N2state.v[n2][sample_time_index]
             np.save(f, state_plot)
@@ -690,9 +718,9 @@ if(print_l2_weights):
         sample_time_index        = sample_time_index[0:-1:step];
         S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
         time_plot                = S120state_times_no_plot/ms
-        with open('./Weights/l2_weights_time.npy', 'wb') as f:
+        with open('./Weights/l2_weights_time.npy', file_mode) as f:
             np.save(f, time_plot)
-        with open('./Weights/l2_weights_value.npy', 'wb') as f:
+        with open('./Weights/l2_weights_value.npy', file_mode) as f:
             for n2 in range(N2_Neurons):
                 for weights in range(N1_Neurons):
                     state_plot = S120state.w[weights+(n2*N1_Neurons)][sample_time_index];
@@ -705,9 +733,9 @@ if(print_l1_traces and learning_1_phase):
     sample_time_index       = sample_time_index[0:-1:step];
     S010state_times_no_plot = S010state_times_no_plot[0:-1:step];
     time_plot               = S010state_times_no_plot/ms
-    with open('./Weights/l1_trace_time.npy', 'wb') as f:
+    with open('./Weights/l1_trace_time.npy', file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l1_trace_value.npy', 'wb') as f:
+    with open('./Weights/l1_trace_value.npy', file_mode) as f:
         for n1 in range(N1_Neurons):
             for weights in range(N0_Neurons):
                 state_plot  = S010state.apre[weights+(n1*N0_Neurons)][sample_time_index];
@@ -722,9 +750,9 @@ if(print_l2_traces and learning_2_phase):
     sample_time_index       = sample_time_index[0:-1:step];
     S120state_times_no_plot = S120state_times_no_plot[0:-1:step];
     time_plot               = S120state_times_no_plot/ms
-    with open('./Weights/l2_trace_time.npy', 'wb') as f:
+    with open('./Weights/l2_trace_time.npy', file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l2_trace_value.npy', 'wb') as f:
+    with open('./Weights/l2_trace_value.npy', file_mode) as f:
         for n2 in range(N2_Neurons):
             for weights in range(N1_Neurons):
                 state_plot  = S120state.apre[weights+(n2*N1_Neurons)][sample_time_index];

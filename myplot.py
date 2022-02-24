@@ -1,285 +1,382 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import json
 figpath = './figures/'
 
-with open('sim_values.npy', 'rb') as f:
-        plot_start = np.load(f)
-        plot_end   = np.load(f)
-        N0_Neurons = np.load(f)
-        N1_Neurons = np.load(f)
-        N2_Neurons = np.load(f)
-        Reward_Neurons = np.load(f)
-        testing_phase = np.load(f)
-        print_neuron_l0     = np.load(f)
-        print_l1_membrana   = np.load(f)
-        print_l1_weights    = np.load(f)
-        print_l1_traces     = np.load(f)
-        print_l2_membrana   = np.load(f)
-        print_l2_weights    = np.load(f)
-        print_l2_traces     = np.load(f)
-        print_neuron_reward = np.load(f)
-        print_neuron_l1     = np.load(f)
-        print_neuron_l2     = np.load(f)
+json_file = open('sim_values.json')
+sim_json  = json.load(json_file)
 
+xlim_start     = sim_json['simulations'][0]['plot_start']
+total_duration = 0
+plot_start_lst = [ sim_json['simulations'][0]['plot_start'] ]
+
+for sim in sim_json['simulations']:
+    total_duration+= sim['plot_end'] - sim['plot_start']
+    plot_start_lst.append(total_duration)
+
+print(plot_start_lst)
+xlim_end   = xlim_start + total_duration
+
+N0_Neurons          = sim_json['parameters']['N0_Neurons']
+N1_Neurons          = sim_json['parameters']['N1_Neurons']
+N2_Neurons          = sim_json['parameters']['N2_Neurons']
+Reward_Neurons      = sim_json['parameters']['Reward_Neurons']
+testing_phase       = sim_json['parameters']['testing_phase']
+print_neuron_l0     = sim_json['parameters']['print_neuron_l0']
+print_l1_membrana   = sim_json['parameters']['print_l1_membrana']
+print_l1_weights    = sim_json['parameters']['print_l1_weights']
+print_l1_traces     = sim_json['parameters']['print_l1_traces']
+print_l2_membrana   = sim_json['parameters']['print_l2_membrana']
+print_l2_weights    = sim_json['parameters']['print_l2_weights']
+print_l2_traces     = sim_json['parameters']['print_l2_traces']
+print_neuron_reward = sim_json['parameters']['print_neuron_reward']
+print_neuron_l1     = sim_json['parameters']['print_neuron_l1']
+print_neuron_l2     = sim_json['parameters']['print_neuron_l2']
+learning_1_phase    = sim_json['parameters']['learning_1_phase']
+learning_2_phase    = sim_json['parameters']['learning_2_phase']
 
 if(print_neuron_l0):
+    list_to_check = []
+    plt.figure(1)
+    plt.title("Input Neuron Stream")
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron index')
+    i_count = 0
     with open('./Weights/l0_stream.npy', 'rb') as f:
-        n0_times   = np.load(f)
-        n0_indices = np.load(f)
-        n0_times   = n0_times*1000
-        plt.figure(1)
-        plt.title("Input Neuron Stream")
-        plt.plot(n0_times, n0_indices, '.k')
-        plt.ylim((-0.5,N0_Neurons))
-        plt.xlim((plot_start, plot_end+1))
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Neuron index');
-        if not testing_phase:
-            plt.savefig(figpath + 'l0_stream.png')
-        else:
-            plt.savefig(figpath + 'l0_stream_test.png')
-        plt.close(1)
+        for sim in sim_json['simulations']:
+            n0_times   = np.load(f)
+            n0_indices = np.load(f)
+            list_to_check.append(n0_times)
+            n0_times   = n0_times*1000 + plot_start_lst[i_count]
+            if i_count == 0:
+                plt.plot(n0_times, n0_indices, '.k')
+            else:
+                plt.plot(n0_times, n0_indices, '.b')
+            i_count+=1
+    print(list_to_check[0] == list_to_check[1])
+    print(list_to_check[0])
+    print(list_to_check[1])
+    plt.xlim((xlim_start, xlim_end))
+    plt.ylim((-0.5,N0_Neurons))
+    if not testing_phase:
+        plt.savefig(figpath + 'l0_stream.png')
+    else:
+        plt.savefig(figpath + 'l0_stream_test.png')
+    plt.close(1)
 
 if(print_neuron_reward):
+    plt.figure(1)
+    plt.title("Reward Neuron Stream")
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron index')
+    i_count = 0
     with open('./Weights/lreward_stream.npy', 'rb') as f:
-        nr_times   = np.load(f)
-        nr_indices = np.load(f)
-        nr_times   = nr_times*1000
-        plt.figure(1)
-        plt.title("Reward Neuron Stream")
-        plt.plot(nr_times, nr_indices, '*r')
-        plt.ylim((-0.5,Reward_Neurons))
-        plt.xlim((plot_start, plot_end+1))
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Neuron index');
-        if not testing_phase:
-            plt.savefig(figpath + 'lreward_stream.png')
+        for sim in sim_json['simulations']:
+            nr_times   = np.load(f)
+            nr_indices = np.load(f)
+            nr_times   = nr_times*1000 + plot_start_lst[i_count]
+            plt.plot(nr_times, nr_indices, '*r')
+            i_count+=1
+
+    plt.xlim((xlim_start, xlim_end))
+    plt.ylim((-0.5,Reward_Neurons))
+    if not testing_phase:
+        plt.savefig(figpath + 'lreward_stream.png')
     plt.close(1)
 
 if(print_neuron_l1):
+    plt.figure(1)
+    plt.title("L1 Neuron Stream")
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron index')
+    i_count = 0
     with open('./Weights/l1_stream.npy', 'rb') as f:
-        n1_times   = np.load(f)
-        n1_indices = np.load(f)
-        n1_times   = n1_times*1000
-        plt.figure(1)
-        plt.title("L1 Neuron Stream")
-        plt.plot(n1_times, n1_indices, '.k')
-        plt.ylim((-0.5,N1_Neurons))
-        plt.xlim((plot_start, plot_end+1))
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Neuron index');
-        if not testing_phase:
-            plt.savefig(figpath + 'l1_stream.png')
-        else:
-            plt.savefig(figpath + 'l1_stream_test.png')
-        plt.close(1)
+        for sim in sim_json['simulations']:
+            n1_times   = np.load(f)
+            n1_indices = np.load(f)
+            n1_times   = n1_times*1000 + plot_start_lst[i_count]
+            plt.plot(n1_times, n1_indices, '.k')
+            i_count+=1
+
+    plt.ylim((-0.5,N1_Neurons))
+    plt.xlim((xlim_start, xlim_end))
+    if not testing_phase:
+        plt.savefig(figpath + 'l1_stream.png')
+    else:
+        plt.savefig(figpath + 'l1_stream_test.png')
+    plt.close(1)
+
 
 if(print_neuron_l2):
+    plt.figure(1)
+    plt.title("L2 Neuron Stream")
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron index')
+    i_count = 0
     with open('./Weights/l2_stream.npy', 'rb') as f:
-        n2_times   = np.load(f)
-        n2_indices = np.load(f)
-        n2_times   = n2_times*1000
-        plt.figure(1)
-        plt.title("L2 Neuron Stream")
-        plt.plot(n2_times, n2_indices, '.k')
-        plt.ylim((-0.5,N2_Neurons))
-        plt.xlim((plot_start, plot_end+1))
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Neuron index');
-        if not testing_phase:
-            plt.savefig(figpath + 'l2_stream.png')
-        else:
-            plt.savefig(figpath + 'l2_stream_test.png')
-        plt.close(1)
+        for sim in sim_json['simulations']:
+            n2_times   = np.load(f)
+            n2_indices = np.load(f)
+            n2_times   = n2_times*1000 + plot_start_lst[i_count]
+            plt.plot(n2_times, n2_indices, '.k')
+            i_count+=1
+    plt.ylim((-0.5,N2_Neurons))
+    plt.xlim((xlim_start, xlim_end))
+    if not testing_phase:
+        plt.savefig(figpath + 'l2_stream.png')
+    else:
+        plt.savefig(figpath + 'l2_stream_test.png')
+    plt.close(1)
 
 if(print_l1_membrana):
+    analog_plots = {
+                'times': [],
+                'neurons': {}
+                }
     with open('./Weights/l1_membrana_time.npy', 'rb') as f:
-        time_plot = np.load(f)
+        i_count = 0
+        time_plot_lst = []
+        for sim in sim_json['simulations']:
+            time_plot = np.load(f)
+            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+            i_count+=1
+
     with open('./Weights/l1_membrana_value.npy', 'rb') as f:
+        neurons_plots = {str(n1):[] for n1 in range(N1_Neurons)}
+        for sim in sim_json['simulations']:
+            for n1 in range(N1_Neurons):
+                state_plot = np.load(f)
+                neurons_plots[str(n1)].append(state_plot)
+        analog_plots['neurons'] = neurons_plots
 
-        fig_counter = 1
-        for n1 in range(N1_Neurons):
-            state_plot = np.load(f)
+    fig_counter = 1
+    stop_counter = 0
+    for n1 in range(N1_Neurons):
+        if (n1 % 4 == 0):
+            plt.figure(1)
+            stop_counter = 1
+            fig_counter = fig_counter + 1
 
-            if (n1 % 4 == 0):
-                plt.figure(1)
-                fig_counter = fig_counter + 1
+        ax1 = plt.subplot2grid((4,1), (n1 % 4,0))
+        ax1.set_title("neuron " + str(n1))
+        plt.xlim((xlim_start, xlim_end))
+        plt.ylim((-0.22, 0.12))
+        plt.grid(True)
 
-            ax1 = plt.subplot2grid((4,1), (n1 % 4,0))
-            ax1.set_title("L1 Neuron Membrana neuron " + str(n1))
+        i_count = 0
+        for time_plot in analog_plots['times']:
+            state_plot = analog_plots['neurons'][str(n1)][i_count]
             plt.plot(time_plot, state_plot)
+            i_count+=1
 
-            if (n1 % 4 == 3):
-
-                plt.xlabel('Time (ms)')
-                plt.ylabel('V')
-                plt.xlim((plot_start, plot_end+1))
-                plt.ylim((-0.22, 0.12))
-                plt.grid(True)
-                if not testing_phase:
-                    plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '.png')
-                else:
-                    plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
-                plt.close(1)
-
-        if ( (n1-1) % 4 < 3):
-            plt.xlabel('Time (ms)')
-            plt.ylabel('V')
-            plt.xlim((plot_start, plot_end+1))
-            plt.ylim((-0.22, 0.12))
-            plt.grid(True)
+        if (n1 % 4 == 3):
+            stop_counter = 0
             if not testing_phase:
                 plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '.png')
             else:
                 plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
             plt.close(1)
 
+    if (stop_counter):
+        if not testing_phase:
+            plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '.png')
+        else:
+            plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
+        plt.close(1)
+
 if(print_l2_membrana):
+    analog_plots = {
+                'times': [],
+                'neurons': {}
+                }
     with open('./Weights/l2_membrana_time.npy', 'rb') as f:
-        time_plot = np.load(f)
+        i_count = 0
+        time_plot_lst = []
+        for sim in sim_json['simulations']:
+            time_plot = np.load(f)
+            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+            i_count+=1
+
     with open('./Weights/l2_membrana_value.npy', 'rb') as f:
-        fig_counter = 1
-        stop_counter = 0
+        neurons_plots = {str(n2):[] for n2 in range(N2_Neurons)}
+        for sim in sim_json['simulations']:
+            for n2 in range(N2_Neurons):
+                state_plot = np.load(f)
+                neurons_plots[str(n2)].append(state_plot)
+        analog_plots['neurons'] = neurons_plots
 
-        for n2 in range(N2_Neurons):
-            state_plot = np.load(f)
+    fig_counter = 1
+    stop_counter = 0
+    for n2 in range(N2_Neurons):
+        if (n2 % 4 == 0):
+            plt.figure(1)
+            stop_counter = 1
+            fig_counter = fig_counter + 1
 
-            if (n2 % 4 == 0):
-                plt.figure(1)
-                stop_counter = 1
-                fig_counter = fig_counter + 1
+        ax1 = plt.subplot2grid((4,1), (n2 % 4,0))
+        ax1.set_title("neuron " + str(n2))
+        plt.xlim((xlim_start, xlim_end))
+        plt.ylim((-0.22, 0.12))
+        plt.grid(True)
 
-            ax1 = plt.subplot2grid((4,1), (n2 % 4,0))
-            ax1.set_title("neuron " + str(n2))
+        i_count = 0
+        for time_plot in analog_plots['times']:
+            state_plot = analog_plots['neurons'][str(n2)][i_count]
             plt.plot(time_plot, state_plot)
+            i_count+=1
 
-            if (n2 % 4 == 3):
-                stop_counter = 0
-                plt.xlabel('Time (ms)')
-                plt.ylabel('V')
-                plt.xlim((plot_start, plot_end+1))
-                plt.ylim((-0.22, 0.12))
-                plt.grid(True)
-                if not testing_phase:
-                    plt.savefig(figpath + 'l2_membrana_value' + str(fig_counter-1) + '.png')
-                else:
-                    plt.savefig(figpath + 'l2_membrana_value_test' + str(fig_counter-1) + '.png')
-                plt.close(1)
-
-        if (stop_counter):
-            plt.xlabel('Time (ms)')
-            plt.ylabel('V')
-            plt.xlim((plot_start, plot_end+1))
-            plt.ylim((-0.22, 0.12))
-            plt.grid(True)
+        if (n2 % 4 == 3):
+            stop_counter = 0
             if not testing_phase:
                 plt.savefig(figpath + 'l2_membrana_value' + str(fig_counter-1) + '.png')
             else:
                 plt.savefig(figpath + 'l2_membrana_value_test' + str(fig_counter-1) + '.png')
             plt.close(1)
 
+    if (stop_counter):
+        if not testing_phase:
+            plt.savefig(figpath + 'l2_membrana_value' + str(fig_counter-1) + '.png')
+        else:
+            plt.savefig(figpath + 'l2_membrana_value_test' + str(fig_counter-1) + '.png')
+        plt.close(1)
+
 if(print_l2_weights):
+    analog_plots = {
+                'times': [],
+                'weights': {}
+                }
     with open('./Weights/l2_weights_time.npy', 'rb') as f:
-        time_plot = np.load(f)
+        i_count = 0
+        time_plot_lst = []
+        for sim in sim_json['simulations']:
+            time_plot = np.load(f)
+            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+            i_count+=1
+
     with open('./Weights/l2_weights_value.npy', 'rb') as f:
-        fig_counter = 1
-        stop_counter = 0
-        for n2 in range(N2_Neurons):
-            for weights in range(N1_Neurons):
+        weights_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
+        for sim in sim_json['simulations']:
+            for n2 in range(N2_Neurons):
+                for n1 in range(N1_Neurons):
+                    state_plot = np.load(f)
+                    weights_plots[str(n2)+":"+str(n1)].append(state_plot)
 
-                state_plot = np.load(f)
+        analog_plots['weights'] = weights_plots
 
-                if (weights % 8 == 0):
-                    min_w = +10
-                    max_w = -10
-                    plt.figure(1)
-                    stop_counter = 1
-                    fig_counter = fig_counter + 1
+    fig_counter = 1
+    stop_counter = 0
 
-                ax1 = plt.subplot2grid((8,1), (weights % 8,0))
-                ax1.set_title(str(weights)+"::"+str(n2))
+    for n2 in range(N2_Neurons):
+        for n1 in range(N1_Neurons):
+
+            if (n1 % 8 == 0):
+                min_w = +10
+                max_w = -10
+                plt.figure(1)
+                stop_counter = 1
+                fig_counter = fig_counter + 1
+
+            ax1 = plt.subplot2grid((8,1), (n1 % 8,0))
+            ax1.set_title(str(n1)+"::"+str(n2))
+
+            i_count = 0
+            for time_plot in analog_plots['times']:
+                state_plot = analog_plots['weights'][str(n2)+":"+str(n1)][i_count]
                 plt.plot(time_plot, state_plot)
+                i_count+=1
 
-                if(state_plot.min() < min_w):
-                    min_w = state_plot.min()
-                if(state_plot.max() > max_w):
-                    max_w = state_plot.max()
+            if(state_plot.min() < min_w):
+                min_w = state_plot.min()
+            if(state_plot.max() > max_w):
+                max_w = state_plot.max()
 
-                plt.xlim((plot_start, plot_end+1))
-                plt.ylim((min_w*0.9, max_w*1.1))
-                plt.grid(True)
-
-                if (weights % 8 == 7):
-                    stop_counter = 0
-                    if not testing_phase:
-                        plt.savefig(figpath + 'l2_weight_value' + str(fig_counter-1) + '.png')
-                    else:
-                        plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
-                    plt.close(1)
-
-        if (stop_counter):
-            plt.xlabel('Time (ms)')
-            plt.ylabel('V')
-            plt.xlim((plot_start, plot_end+1))
-            plt.ylim((-0.22, 0.12))
+            plt.xlim((xlim_start, xlim_end))
+            plt.ylim((min_w*0.9, max_w*1.1))
             plt.grid(True)
-            if not testing_phase:
-                plt.savefig(figpath + 'l2_weight_value' + str(fig_counter-1) + '.png')
-            else:
-                plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
-            plt.close(1)
 
+            if (n1 % 8 == 7):
+                stop_counter = 0
+                if not testing_phase:
+                    plt.savefig(figpath + 'l2_weight_value' + str(fig_counter-1) + '.png')
+                else:
+                    plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
+                plt.close(1)
 
-
-exit()
-
+    if (stop_counter):
+        if not testing_phase:
+            plt.savefig(figpath + 'l2_weight_value' + str(fig_counter-1) + '.png')
+        else:
+            plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
+        plt.close(1)
 
 if(print_l1_weights):
-    plt.figure(1)
+    analog_plots = {
+                'times': [],
+                'weights': {}
+                }
+    with open('./Weights/l1_weights_time.npy', 'rb') as f:
+        i_count = 0
+        time_plot_lst = []
+        for sim in sim_json['simulations']:
+            time_plot = np.load(f)
+            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+            i_count+=1
+
+    with open('./Weights/l1_weights_value.npy', 'rb') as f:
+        weights_plots = {str(n1)+":"+str(n0):[] for n1 in range(N1_Neurons) for n0 in range(N0_Neurons)}
+        for sim in sim_json['simulations']:
+            for n1 in range(N1_Neurons):
+                for n0 in range(N0_Neurons):
+                    state_plot = np.load(f)
+                    weights_plots[str(n1)+":"+str(n0)].append(state_plot)
+
+        analog_plots['weights'] = weights_plots
+
+    fig_counter = 1
+    stop_counter = 0
 
     for n1 in range(N1_Neurons):
+        for n0 in range(N0_Neurons):
 
-        ax1 = plt.subplot2grid((N1_Neurons,1), (n1,0))
-        ax1.set_title("N" + str(n1) + " Weights")
+            if (n0 % 8 == 0):
+                min_w = +10
+                max_w = -10
+                plt.figure(1)
+                stop_counter = 1
+                fig_counter = fig_counter + 1
 
-        min_w = +10
-        max_w = -10
+            ax1 = plt.subplot2grid((8,1), (n0 % 8,0))
+            ax1.set_title(str(n0)+"::"+str(n1))
 
-        for weights in weights_to_plot:
-            time_plot = []
-            state_plot = []
+            i_count = 0
+            for time_plot in analog_plots['times']:
+                state_plot = analog_plots['weights'][str(n1)+":"+str(n0)][i_count]
+                plt.plot(time_plot, state_plot)
+                i_count+=1
 
-            sample_time_condition = (S010state.t/ms < plot_end) & (S010state.t/ms >= plot_start)
-            sample_time_index     = np.where(sample_time_condition)[0]
-            S010state_times_no_plot  = S010state.t[sample_time_condition]
+            if(state_plot.min() < min_w):
+                min_w = state_plot.min()
+            if(state_plot.max() > max_w):
+                max_w = state_plot.max()
 
-            sample_time_index     = sample_time_index[0:-1:step];
-            S010state_times_no_plot  = S010state_times_no_plot[0:-1:step];
-
-            if S010state.w[weights+(n1*N0_Neurons)][sample_time_index].min() < min_w:
-                min_w = S010state.w[weights+(n1*N0_Neurons)][sample_time_index].min();
-
-            if S010state.w[weights+(n1*N0_Neurons)][sample_time_index].max() > max_w:
-                max_w = S010state.w[weights+(n1*N0_Neurons)][sample_time_index].max();
-
-            time_plot  = S010state_times_no_plot/ms
-            state_plot = S010state.w[weights+(n1*N0_Neurons)][sample_time_index]
-
-            plt.plot(time_plot, state_plot,label='N1::'+str(n1))
+            plt.xlim((xlim_start, xlim_end))
+            plt.ylim((min_w*0.9, max_w*1.1))
             plt.grid(True)
 
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Weights')
-        plt.ylim((min_w*0.9,max_w*1.1))
-        plt.xlim((plot_start, plot_end+1))
+            if (n0 % 8 == 7):
+                stop_counter = 0
+                if not testing_phase:
+                    plt.savefig(figpath + 'l1_weight_value' + str(fig_counter-1) + '.png')
+                else:
+                    plt.savefig(figpath + 'l1_weight_value_test' + str(fig_counter-1) + '.png')
+                plt.close(1)
 
-    if learning_1_phase:
-        plt.savefig(figpath + '10_weights_stdp.png')
-    else:
-        plt.savefig(figpath + '10_test_weights.png')
-
-    plt.close(1)
+    if (stop_counter):
+        if not testing_phase:
+            plt.savefig(figpath + 'l1_weight_value' + str(fig_counter-1) + '.png')
+        else:
+            plt.savefig(figpath + 'l1_weight_value_test' + str(fig_counter-1) + '.png')
+        plt.close(1)
 
 if learning_1_phase:
     weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
@@ -302,208 +399,85 @@ if learning_1_phase:
         printmatrix(weight_matrix[n1],sourceFile)
         sourceFile.close()
 
-weights2_to_plot = np.arange(0,N1_Neurons, step=20)
+if(print_l2_traces and learning_2_phase):
+    analog_plots = {
+                'times': [],
+                'apre': {},
+                'apost': {},
+                'reward': {},
+                'punish': {}
+                }
+    with open('./Weights/l2_trace_time.npy', 'rb') as f:
+        i_count = 0
+        time_plot_lst = []
+        for sim in sim_json['simulations']:
+            time_plot = np.load(f)
+            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+            i_count+=1
 
-np.set_printoptions(threshold=sys.maxsize)
-print(weights2_to_plot)
+    with open('./Weights/l2_trace_value.npy', 'rb') as f:
+        apre_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
+        apost_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
+        reward_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
+        punish_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
+        for sim in sim_json['simulations']:
+            for n2 in range(N2_Neurons):
+                for n1 in range(N1_Neurons):
+                    state_plot = np.load(f)
+                    apre_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    state_plot = np.load(f)
+                    apost_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    state_plot = np.load(f)
+                    reward_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    state_plot = np.load(f)
+                    punish_plots[str(n2)+":"+str(n1)].append(state_plot)
 
-if(print_weights):
-    plt.figure(1)
+        analog_plots['apre'] = apre_plots
+        analog_plots['apost'] = apost_plots
+        analog_plots['reward'] = reward_plots
+        analog_plots['punish'] = punish_plots
+
 
     fig_counter = 1
+    stop_counter = 0
+
     for n2 in range(N2_Neurons):
+        for n1 in range(N1_Neurons):
 
-        if (n2 % 4 == 0):
-            plt.figure(1)
-            fig_counter = fig_counter + 1
+            if (n1 % 8 == 0):
+                min_w = +10
+                max_w = -10
+                plt.figure(1)
+                stop_counter = 1
+                fig_counter = fig_counter + 1
 
-        ax1 = plt.subplot2grid((4,1), (n2 % 4,0))
-        ax1.set_title("N" + str(n2) + " Weights - layer 2")
+            ax1 = plt.subplot2grid((8,1), (n1 % 8,0))
+            ax1.set_title(str(n1)+"::"+str(n2))
 
-        min_w = +1
-        max_w = -1
+            i_count = 0
+            for time_plot in analog_plots['times']:
+                state_plot = analog_plots['apre'][str(n2)+":"+str(n1)][i_count]
+                plt.plot(time_plot, state_plot,'r')
+                state_plot = analog_plots['apost'][str(n2)+":"+str(n1)][i_count]
+                plt.plot(time_plot, state_plot,'b')
+                i_count+=1
 
-        for weights in weights2_to_plot:
-            time_plot = []
-            state_plot = []
-
-            sample_time_condition = (S120state.t/ms < plot_end) & (S120state.t/ms >= plot_start)
-            sample_time_index     = np.where(sample_time_condition)[0]
-            S120state_times_no_plot  = S120state.t[sample_time_condition]
-
-            sample_time_index        = sample_time_index[0:-1:step];
-            S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
-
-            if S120state.w[weights+(n2*N1_Neurons)][sample_time_index].min() < min_w:
-                min_w = S120state.w[weights+(n2*N1_Neurons)][sample_time_index].min();
-
-            if S120state.w[weights+(n2*N1_Neurons)][sample_time_index].max() > max_w:
-                max_w = S120state.w[weights+(n2*N1_Neurons)][sample_time_index].max();
-
-            time_plot  = S120state_times_no_plot/ms
-            state_plot = S120state.w[weights+(n2*N1_Neurons)][sample_time_index]
-
-            plt.plot(time_plot, state_plot,label='N2::'+str(n2))
-
-
-        if (n2 % 4 == 3):
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Weights')
-            plt.ylim((min_w*0.9,max_w*1.1))
-            plt.xlim((plot_start, plot_end+1))
+            plt.xlim((xlim_start, xlim_end))
+            plt.ylim((-0.0004, +0.0004))
             plt.grid(True)
-            if learning_2_phase:
-                plt.savefig(figpath + '10_weights_stdp_reward_' + str(fig_counter-1) + '.png')
-            else:
-                plt.savefig(figpath + '10_test_weights_reward_' + str(fig_counter-1) + '.png')
-            plt.close(1)
 
-    if ( (n2-1) % 4 < 3):
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Weights')
-        plt.ylim((min_w*0.9,max_w*1.1))
-        plt.xlim((plot_start, plot_end+1))
-        plt.grid(True)
-        if learning_2_phase:
-            plt.savefig(figpath + '10_weights_stdp_reward_' + str(fig_counter-1) + '.png')
+            if (n1 % 8 == 7):
+                stop_counter = 0
+                if not testing_phase:
+                    plt.savefig(figpath + 'l2_trace_value' + str(fig_counter-1) + '.png')
+                else:
+                    plt.savefig(figpath + 'l2_trace_value_test' + str(fig_counter-1) + '.png')
+                plt.close(1)
+
+    if (stop_counter):
+        if not testing_phase:
+            plt.savefig(figpath + 'l2_trace_value' + str(fig_counter-1) + '.png')
         else:
-            plt.savefig(figpath + '10_test_weights_reward_' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath + 'l2_trace_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
 
-
-if(print_l1_traces and learning_1_phase):
-    plt.figure(1)
-
-    for n1 in range(N1_Neurons):
-
-        ax1 = plt.subplot2grid((N1_Neurons,1), (n1,0))
-        ax1.set_title("N" + str(n1) + " Traces")
-
-
-        for weights in weights_to_plot:
-            time_plot = []
-            state_plot = []
-            state2_plot = []
-
-            sample_time_condition = (S010state.t/ms < plot_end) & (S010state.t/ms >= plot_start)
-            sample_time_index     = np.where(sample_time_condition)[0]
-            S010state_times_no_plot  = S010state.t[sample_time_condition]
-
-            sample_time_index     = sample_time_index[0:-1:step];
-            S010state_times_no_plot  = S010state_times_no_plot[0:-1:step];
-
-            time_plot = np.concatenate((time_plot, S010state_times_no_plot/ms))
-            state_plot = np.concatenate((state_plot, S010state.apre[weights+(n1*N0_Neurons)][sample_time_index]))
-            state2_plot = np.concatenate((state2_plot, S010state.apost[weights+(n1*N0_Neurons)][sample_time_index]))
-
-
-            plt.plot(time_plot, state_plot, label='N1::'+str(n1))
-            plt.plot(time_plot, state2_plot, label='N1::'+str(n1))
-            plt.grid(True)
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Traces')
-            plt.ylim((-0.0012,+0.0008))
-            plt.xlim((plot_start, plot_end+1))
-    plt.savefig(figpath + '11_traces_stdp.png')
-    plt.close(1)
-
-if(print_traces and learning_2_phase):
-    plt.figure(1)
-
-    fig_counter = 1
-    for n2 in range(N2_Neurons):
-
-        if (n2 % 4 == 0):
-            plt.figure(1)
-            fig_counter = fig_counter + 1
-
-        ax1 = plt.subplot2grid((4,1), (n2 % 4,0))
-        ax1.set_title("N" + str(n2) + " Traces")
-
-        for weights in weights2_to_plot:
-            time_plot = []
-            state_plot = []
-            state2_plot = []
-            state3_plot = []
-            state4_plot = []
-
-            sample_time_condition = (S120state.t/ms < plot_end) & (S120state.t/ms >= plot_start)
-            sample_time_index     = np.where(sample_time_condition)[0]
-            S120state_times_no_plot  = S120state.t[sample_time_condition]
-
-            sample_time_index     = sample_time_index[0:-1:step];
-            S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
-
-            time_plot = np.concatenate((time_plot, S120state_times_no_plot/ms))
-            state_plot = np.concatenate((state_plot, S120state.apre[weights+(n2*N1_Neurons)][sample_time_index]))
-            state2_plot = np.concatenate((state2_plot, S120state.apost[weights+(n2*N1_Neurons)][sample_time_index]))
-            state3_plot = np.concatenate((state3_plot, S120state.reward[weights+(n2*N1_Neurons)][sample_time_index]))
-            state4_plot = np.concatenate((state4_plot, S120state.punish[weights+(n2*N1_Neurons)][sample_time_index]))
-
-            plt.plot(time_plot, state_plot, label='N2::'+str(n2))
-            plt.plot(time_plot, state2_plot, label='N2::'+str(n2))
-            plt.plot(time_plot, state3_plot*0.0004, label='N2::'+str(n2), color='r')
-            plt.plot(time_plot, -state4_plot*0.0004, label='N2::'+str(n2), color='b')
-
-
-        if (n2 % 4 == 3):
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Traces')
-            plt.ylim((-0.0012,+0.0008))
-            plt.xlim((plot_start, plot_end+1))
-            plt.grid(True)
-            plt.savefig(figpath + '11_traces_stdp_reward' + str(fig_counter-1) + '.png')
-            plt.close(1)
-
-    if ( (n2-1) % 4 < 3):
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Traces')
-        plt.ylim((-0.0012,+0.0008))
-        plt.xlim((plot_start, plot_end+1))
-        plt.grid(True)
-        plt.savefig(figpath + '11_traces_stdp_reward' + str(fig_counter-1) + '.png')
-        plt.close(1)
-
-
-if print_neuron_l1:
-    plt.figure(1)
-    plt.title("L1 Neuron Stream")
-    for i_count in np.arange(plot_start_time,end_plot):
-
-        color = classes_color[train_y[i_count]]
-        for k in range(N1_Neurons):
-            sample_time_condition = (N1mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N1mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
-            N1mon_times_nk_plot   = N1mon.spike_trains()[k][sample_time_condition]
-            N1mon_nspikes_nk_plot = np.ones(size(N1mon_times_nk_plot))*k
-            plt.plot(N1mon_times_nk_plot/ms, N1mon_nspikes_nk_plot, '*'+color)
-    plt.ylim((0,N1_Neurons))
-    plt.xlim((plot_start, plot_end+1))
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron index');
-    plt.grid(True)
-    if not testing_phase:
-        plt.savefig(figpath + '12_l1_neurons.png')
-    else:
-        plt.savefig(figpath + '12_test_l1_neurons.png')
-    plt.close(1)
-
-
-plt.figure(1)
-plt.title("Output Neuron Stream")
-for i_count in np.arange(plot_start_time,end_plot):
-
-    color = classes_color[train_y[i_count]]
-    for k in range(N2_Neurons):
-        sample_time_condition = (N2mon.spike_trains()[k]/ms < (i_count+1)*single_example_time) & (N2mon.spike_trains()[k]/ms >= (i_count)*single_example_time)
-        N2mon_times_nk_plot   = N2mon.spike_trains()[k][sample_time_condition]
-        N2mon_nspikes_nk_plot = np.ones(size(N2mon_times_nk_plot))*k
-        plt.plot(N2mon_times_nk_plot/ms, N2mon_nspikes_nk_plot, '*'+color)
-plt.ylim((0,N2_Neurons))
-plt.xlim((plot_start, plot_end+1))
-plt.xlabel('Time (ms)')
-plt.ylabel('Neuron index');
-plt.grid(True)
-if not testing_phase:
-    plt.savefig(figpath + '13_output_neurons.png')
-else:
-    plt.savefig(figpath + '13_test_output_neurons.png')
