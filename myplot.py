@@ -26,9 +26,11 @@ print_neuron_l0     = sim_json['parameters']['print_neuron_l0']
 print_l1_membrana   = sim_json['parameters']['print_l1_membrana']
 print_l1_weights    = sim_json['parameters']['print_l1_weights']
 print_l1_traces     = sim_json['parameters']['print_l1_traces']
+print_l2_state      = sim_json['parameters']['print_l1_state']
 print_l2_membrana   = sim_json['parameters']['print_l2_membrana']
 print_l2_weights    = sim_json['parameters']['print_l2_weights']
 print_l2_traces     = sim_json['parameters']['print_l2_traces']
+print_l2_state      = sim_json['parameters']['print_l2_state']
 print_neuron_reward = sim_json['parameters']['print_neuron_reward']
 print_neuron_l1     = sim_json['parameters']['print_neuron_l1']
 print_neuron_l2     = sim_json['parameters']['print_neuron_l2']
@@ -36,7 +38,6 @@ learning_1_phase    = sim_json['parameters']['learning_1_phase']
 learning_2_phase    = sim_json['parameters']['learning_2_phase']
 
 if(print_neuron_l0):
-    list_to_check = []
     plt.figure(1)
     plt.title("Input Neuron Stream")
     plt.xlabel('Time (ms)')
@@ -46,16 +47,9 @@ if(print_neuron_l0):
         for sim in sim_json['simulations']:
             n0_times   = np.load(f)
             n0_indices = np.load(f)
-            list_to_check.append(n0_times)
             n0_times   = n0_times*1000 + plot_start_lst[i_count]
-            if i_count == 0:
-                plt.plot(n0_times, n0_indices, '.k')
-            else:
-                plt.plot(n0_times, n0_indices, '.b')
+            plt.plot(n0_times, n0_indices, '.k')
             i_count+=1
-    print(list_to_check[0] == list_to_check[1])
-    print(list_to_check[0])
-    print(list_to_check[1])
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,N0_Neurons))
     if not testing_phase:
@@ -128,7 +122,7 @@ if(print_neuron_l2):
         plt.savefig(figpath + 'l2_stream_test.png')
     plt.close(1)
 
-if(print_l1_membrana):
+if(print_l1_membrana and print_l1_state):
     analog_plots = {
                 'times': [],
                 'neurons': {}
@@ -184,7 +178,7 @@ if(print_l1_membrana):
             plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
 
-if(print_l2_membrana):
+if(print_l2_membrana and print_l2_state):
     analog_plots = {
                 'times': [],
                 'neurons': {}
@@ -240,7 +234,7 @@ if(print_l2_membrana):
             plt.savefig(figpath + 'l2_membrana_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
 
-if(print_l2_weights):
+if(print_l2_weights and print_l2_state):
     analog_plots = {
                 'times': [],
                 'weights': {}
@@ -309,7 +303,7 @@ if(print_l2_weights):
             plt.savefig(figpath + 'l2_weight_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
 
-if(print_l1_weights):
+if(print_l1_weights and print_l1_state):
     analog_plots = {
                 'times': [],
                 'weights': {}
@@ -378,28 +372,7 @@ if(print_l1_weights):
             plt.savefig(figpath + 'l1_weight_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
 
-if learning_1_phase:
-    weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
-    max_w = weight_matrix.max()
-    for n1 in range(N1_Neurons):
-        plt.figure(1)
-        weight_img = np.reshape(S010.w[:,n1], (28,28));
-        print("N" + str(n1) + " max: " + str(weight_img.max()) + " at index " + str(weight_img.argmax()))
-        weight_img = weight_img/max_w*255
-        weight_img = weight_img.astype(int)
-        plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-        plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
-        plt.close(1)
-
-
-    weight_matrix = np.reshape(weight_matrix,(N1_Neurons,28,28))
-    for n1 in np.arange(N1_Neurons):
-        sourceFile = open('./Weights/weights_'+str(n1)+'.txt', 'w')
-        #printmatrix(np.around(weight_matrix[n1], decimals=4),sourceFile)
-        printmatrix(weight_matrix[n1],sourceFile)
-        sourceFile.close()
-
-if(print_l2_traces and learning_2_phase):
+if(print_l2_traces and learning_2_phase and print_l2_state):
     analog_plots = {
                 'times': [],
                 'apre': {},
@@ -480,4 +453,40 @@ if(print_l2_traces and learning_2_phase):
         else:
             plt.savefig(figpath + 'l2_trace_value_test' + str(fig_counter-1) + '.png')
         plt.close(1)
+
+if learning_1_phase:
+    weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
+    max_w = weight_matrix.max()
+    for n1 in range(N1_Neurons):
+        plt.figure(1)
+        weight_img = np.reshape(S010.w[:,n1], (28,28));
+        print("N" + str(n1) + " max: " + str(weight_img.max()) + " at index " + str(weight_img.argmax()))
+        weight_img = weight_img/max_w*255
+        weight_img = weight_img.astype(int)
+        plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
+        plt.savefig(figpath + '10_weights_img_class_' + str(n1) + '.png')
+        plt.close(1)
+
+
+    weight_matrix = np.reshape(weight_matrix,(N1_Neurons,28,28))
+    for n1 in np.arange(N1_Neurons):
+        sourceFile = open('./Weights/weights_'+str(n1)+'.txt', 'w')
+        #printmatrix(np.around(weight_matrix[n1], decimals=4),sourceFile)
+        printmatrix(weight_matrix[n1],sourceFile)
+        sourceFile.close()
+
+if learning_2_phase:
+    with open('./Weights/l2_weights.npy', 'rb') as f:
+        i_count = 0
+        for sim in sim_json['simulations']:
+            weight_matrix = np.load(f)
+            max_w = weight_matrix.max()
+            for n2 in range(N2_Neurons):
+                plt.figure(1)
+                weight_img = np.reshape(weight_matrix[n2,:], (10,10));
+                weight_img = weight_img/max_w*255
+                plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
+                plt.savefig(figpath + 'l2_weights_img_' + str(i_count) + '_' + str(n2) + '.png')
+                plt.close(1)
+            i_count+=1
 

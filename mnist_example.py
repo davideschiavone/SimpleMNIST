@@ -66,22 +66,8 @@ def scanmatrix(mymatrix, myfile):
 
 figpath = './figures/'
 
-print_neuron_l0 = False
-
-print_l1_membrana = False
-print_l1_weights = False
-print_l1_traces = False
-print_neuron_l1 = False
-
-print_l2_membrana = True
-print_l2_weights = True
-print_l2_traces = True
-
-print_neuron_l2 = True
-print_neuron_reward = False
-
-plt_example_mnist = False
-use_only_0_and_1 = True
+plt_example_mnist = True
+use_only_0_and_1 = False
 use_only_0_and_1_and_2 = False
 
 start_scope()
@@ -129,6 +115,7 @@ X_Test_Samples  = test_X.shape[0]
 
 N1_Neurons         = parameter['N1_Neurons']
 N2_Neurons         = parameter['N2_Neurons']
+Reward_Neurons     = int(2*N2_Neurons);
 
 first_example      = parameter['first_example']
 training_example   = X_Train_Samples if parameter['training_example']==-1 else parameter['training_example'];
@@ -141,13 +128,36 @@ testing_phase      = parameter['testing_phase']
 learning_1_phase   = parameter['learning_1_phase']
 learning_2_phase   = parameter['learning_2_phase']
 
+print_neuron_l0     = parameter['print_neuron_l0'];
+
+print_l1_membrana   = parameter['print_l1_membrana'];
+print_l1_weights    = parameter['print_l1_weights'];
+print_l1_traces     = parameter['print_l1_traces'];
+print_l1_state      = parameter['print_l1_state'];
+print_neuron_l1     = parameter['print_neuron_l1'];
+
+print_l2_membrana   = parameter['print_l2_membrana'];
+print_l2_weights    = parameter['print_l2_weights'];
+print_l2_traces     = parameter['print_l2_traces'];
+print_l2_state      = parameter['print_l2_state'];
+
+print_neuron_l2     = parameter['print_neuron_l2'];
+
+print_neuron_reward = parameter['print_neuron_reward'];
+
 if not testing_phase:
     set_size       = training_example
 else:
     set_size       = testing_example
 
 plot_start_time    = parameter['plot_start_time'] if parameter['plot_start_time']>=0 else (set_size+parameter['plot_start_time'])
-plot_duration_time = parameter['plot_duration_time'] if parameter['plot_duration_time'] <= set_size else set_size
+if parameter['plot_duration_time'] < 0:
+    plot_duration_time = set_size
+elif parameter['plot_duration_time'] > set_size:
+    plot_duration_time = set_size
+else:
+    plot_duration_time = parameter['plot_duration_time']
+
 end_plot           = plot_start_time+plot_duration_time
 
 '''
@@ -195,10 +205,10 @@ print('X_test:  ' + str(test_X.shape))
 print('Y_test:  ' + str(test_y.shape))
 
 if(plt_example_mnist):
-    #print the first 9 values
+    #print the first 3 values
     for k in classes:
         plt.figure(1)
-        for i in range(9):
+        for i in range(3):
             plt.subplot(330 + 1 + i)
             if not testing_phase:
                 plt.imshow( (train_X[train_y==k])[i], cmap=plt.get_cmap('gray'))
@@ -341,7 +351,14 @@ if learning_2_phase and previous_state == False:
 elif learning_2_phase and previous_state:
         weight_matrix2 = S120w
 else:
-    print("NOT IMPLEMENTED YET")
+    weight_matrix2 = np.zeros((N2_Neurons,N1_Neurons))
+    with open('./Weights/l2_weights.npy', 'rb') as f:
+        weight_matrix2 = np.load(f)
+
+    for n1 in np.arange(N1_Neurons):
+        sourceFile = open('./Weights/weights_'+str(n1)+'.txt', 'r')
+        scanmatrix(weight_matrix[n1],sourceFile)
+        sourceFile.close()
 
 
 S110 = Synapses(N1, N1,
@@ -362,23 +379,25 @@ net.add(N1)
 net.add(S010)
 net.add(S110)
 
+Thresholdl2 = Thresholdl1*0.5
+
+N2        = NeuronGroup(N2_Neurons, eqs, threshold='v>Thresholdl2', reset=eqs_reset, refractory=10*ms, method='exact')
+
+
+N2.taul1  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
+                 #you can also increase the spacex0x1 and keep tau to 10ms for example
+N2.tausl1 = 20*ms
+tau_reward = 25*ms
+
+if previous_state:
+    N2.v = N2v
+    N2.a = N2a
+else:
+    N1.v = 0
+    N1.a = 0
+
 if learning_2_phase:
 
-    Thresholdl2 = Thresholdl1*0.5
-
-    N2        = NeuronGroup(N2_Neurons, eqs, threshold='v>Thresholdl2', reset=eqs_reset, refractory=10*ms, method='exact')
-
-    N2.taul1  = 9*ms #fast such that cumulative output membrana forgets quickly, otherwise all the neurons get premiated
-                     #you can also increase the spacex0x1 and keep tau to 10ms for example
-    N2.tausl1 = 20*ms
-    tau_reward = 25*ms
-
-    if previous_state:
-        N2.v = N2v
-        N2.a = N2a
-    else:
-        N1.v = 0
-        N1.a = 0
 
     S120 = Synapses(N1, N2,
                         '''
@@ -418,8 +437,6 @@ if learning_2_phase:
 
     S120.wmax     = Thresholdl2*0.5
     S120.wmin     = 0
-
-    Reward_Neurons = int(2*N2_Neurons);
 
     NReward = SpikeGeneratorGroup(Reward_Neurons, [0], [0]*ms)
 
@@ -461,6 +478,34 @@ if learning_2_phase:
     net.add(NReward)
     net.add(S120)
     net.add(SRS120)
+else:
+
+    S120 = Synapses(N1, N2,
+                        '''
+                        w : 1
+                        ''',
+                        on_pre='''
+                        v_post += w
+                        ''',
+                        method='linear')
+
+    i_s120_syn = []
+    j_s120_syn = []
+
+    for n2 in range(N2_Neurons):
+        #all N1 neurons connected to n2
+        i_n = np.arange(0,N1_Neurons)
+        j_n = np.ones(size(i_n))*n2
+        i_s120_syn = np.concatenate((i_s120_syn, i_n))
+        j_s120_syn = np.concatenate((j_s120_syn, j_n))
+
+    i_s120_syn = i_s120_syn.astype(int)
+    j_s120_syn = j_s120_syn.astype(int)
+
+    S120.connect(i=i_s120_syn, j=j_s120_syn)
+
+    net.add(N2)
+    net.add(S120)
 
 
 start_mon = plot_start_time*single_example_time
@@ -489,9 +534,11 @@ parameters = {
             'print_l1_membrana' : print_l1_membrana,
             'print_l1_weights' : print_l1_weights,
             'print_l1_traces' : print_l1_traces,
+            'print_l1_state' : print_l1_state,
             'print_l2_membrana' : print_l2_membrana,
             'print_l2_weights' : print_l2_weights,
             'print_l2_traces' : print_l2_traces,
+            'print_l2_state' : print_l2_state,
             'print_neuron_reward' : print_neuron_reward,
             'print_neuron_l1' : print_neuron_l1,
             'print_neuron_l2' : print_neuron_l2,
@@ -604,23 +651,23 @@ N2mon    = SpikeMonitor(N2)
 net.add(N2mon)
 
 
-if(print_l1_membrana):
+if(print_l1_membrana and print_l1_state):
     N1state  = StateMonitor(N1, ['v'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
     net.add(N1state)
 
-if(print_l2_membrana):
+if(print_l2_membrana and print_l2_state):
     N2state  = StateMonitor(N2, ['v'], record=np.arange(N2_Neurons), dt=monitor_step*ms)
     net.add(N2state)
 
 if(print_l1_traces or print_l1_weights):
-    if learning_1_phase:
+    if learning_1_phase and print_l1_state:
         S010state   = StateMonitor(S010, ['w','apre', 'apost'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
     else:
         S010state   = StateMonitor(S010, ['w'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
     net.add(S010state)
 
 if(print_l2_traces or print_l2_weights):
-    if learning_2_phase:
+    if learning_2_phase and print_l2_state:
         S120state   = StateMonitor(S120, ['w','apre', 'apost', 'reward', 'punish'], record=np.arange(N0_Neurons*N1_Neurons), dt=monitor_step*ms)
     else:
         S120state   = StateMonitor(S120, ['w'], record=np.arange(N1_Neurons*N2_Neurons), dt=monitor_step*ms)
@@ -666,7 +713,7 @@ if(print_neuron_l2):
 
 step=int(plot_step_time*10);
 
-if(print_l1_membrana):
+if(print_l1_membrana and print_l1_state):
     sample_time_condition = (N1state.t/ms < end_plot*single_example_time) & (N1state.t/ms >= plot_start_time*single_example_time)
     sample_time_index     = np.where(sample_time_condition)[0]
     N1state_times_no_plot = N1state.t[sample_time_condition]
@@ -680,7 +727,7 @@ if(print_l1_membrana):
             state_plot = N1state.v[n1][sample_time_index]
             np.save(f, state_plot)
 
-if(print_l2_membrana):
+if(print_l2_membrana and print_l2_state):
     sample_time_condition = (N2state.t/ms < end_plot*single_example_time) & (N2state.t/ms >= plot_start_time*single_example_time)
     sample_time_index     = np.where(sample_time_condition)[0]
     N2state_times_no_plot = N2state.t[sample_time_condition]
@@ -707,26 +754,26 @@ if(print_l1_weights):
 
 if(print_l2_weights):
     if learning_2_phase:
-        weight_matrix = S120.w.get_item(item=np.arange(N1_Neurons*N2_Neurons))
-        weight_matrix = np.reshape(weight_matrix,(N2_Neurons,N1_Neurons))
-        sourceFile = open('./Weights/l2_weights.txt', 'w')
-        printmatrix(weight_matrix,sourceFile)
-        sourceFile.close()
-        sample_time_condition    = (S120state.t/ms < end_plot*single_example_time) & (S120state.t/ms >= plot_start_time*single_example_time)
-        sample_time_index        = np.where(sample_time_condition)[0]
-        S120state_times_no_plot  = S120state.t[sample_time_condition]
-        sample_time_index        = sample_time_index[0:-1:step];
-        S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
-        time_plot                = S120state_times_no_plot/ms
-        with open('./Weights/l2_weights_time.npy', file_mode) as f:
-            np.save(f, time_plot)
-        with open('./Weights/l2_weights_value.npy', file_mode) as f:
-            for n2 in range(N2_Neurons):
-                for weights in range(N1_Neurons):
-                    state_plot = S120state.w[weights+(n2*N1_Neurons)][sample_time_index];
-                    np.save(f, state_plot)
+        with open('./Weights/l2_weights.npy', file_mode) as f:
+            weight_matrix = S120.w.get_item(item=np.arange(N1_Neurons*N2_Neurons))
+            weight_matrix = np.reshape(weight_matrix,(N2_Neurons,N1_Neurons))
+            np.save(f, weight_matrix)
+        if(print_l2_state):
+            sample_time_condition    = (S120state.t/ms < end_plot*single_example_time) & (S120state.t/ms >= plot_start_time*single_example_time)
+            sample_time_index        = np.where(sample_time_condition)[0]
+            S120state_times_no_plot  = S120state.t[sample_time_condition]
+            sample_time_index        = sample_time_index[0:-1:step];
+            S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
+            time_plot                = S120state_times_no_plot/ms
+            with open('./Weights/l2_weights_time.npy', file_mode) as f:
+                np.save(f, time_plot)
+            with open('./Weights/l2_weights_value.npy', file_mode) as f:
+                for n2 in range(N2_Neurons):
+                    for weights in range(N1_Neurons):
+                        state_plot = S120state.w[weights+(n2*N1_Neurons)][sample_time_index];
+                        np.save(f, state_plot)
 
-if(print_l1_traces and learning_1_phase):
+if(print_l1_traces and learning_1_phase and print_l1_stream):
     sample_time_condition   = (S010state.t/ms < end_plot*single_example_time) & (S010state.t/ms >= plot_start_time*single_example_time)
     sample_time_index       = np.where(sample_time_condition)[0]
     S010state_times_no_plot = S010state.t[sample_time_condition]
@@ -743,7 +790,7 @@ if(print_l1_traces and learning_1_phase):
                 np.save(f, state_plot)
                 np.save(f, state2_plot)
 
-if(print_l2_traces and learning_2_phase):
+if(print_l2_traces and learning_2_phase and print_l2_state):
     sample_time_condition   = (S120state.t/ms < end_plot*single_example_time) & (S120state.t/ms >= plot_start_time*single_example_time)
     sample_time_index       = np.where(sample_time_condition)[0]
     S120state_times_no_plot = S120state.t[sample_time_condition]
