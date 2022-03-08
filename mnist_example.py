@@ -66,7 +66,7 @@ def scanmatrix(mymatrix, myfile):
 
 figpath = './figures/'
 
-plt_example_mnist = True
+plt_example_mnist = False
 use_only_0_and_1 = False
 use_only_0_and_1_and_2 = False
 
@@ -140,6 +140,7 @@ print_l2_membrana   = parameter['print_l2_membrana'];
 print_l2_weights    = parameter['print_l2_weights'];
 print_l2_traces     = parameter['print_l2_traces'];
 print_l2_state      = parameter['print_l2_state'];
+print_statistics    = parameter['print_statistics'];
 
 print_neuron_l2     = parameter['print_neuron_l2'];
 
@@ -379,7 +380,7 @@ net.add(N1)
 net.add(S010)
 net.add(S110)
 
-Thresholdl2 = Thresholdl1*0.5
+Thresholdl2 = Thresholdl1*0.35
 
 N2        = NeuronGroup(N2_Neurons, eqs, threshold='v>Thresholdl2', reset=eqs_reset, refractory=10*ms, method='exact')
 
@@ -411,11 +412,11 @@ if learning_2_phase:
                         ''',
                         on_pre='''
                         v_post += w
-                        apre += reward*(0.0003) - punish*(0.0005)
+                        apre += reward*(0.0003) - punish*(0.0003)
                         w = clip(w+apost,wmin,wmax)
                         ''',
                         on_post='''
-                        apost += reward*(0.0003) - punish*(0.0005)
+                        apost += reward*(0.0003) - punish*(0.0003)
                         w = clip(w+apre,wmin,wmax)
                         ''',
                         method='linear')
@@ -507,6 +508,21 @@ else:
     net.add(N2)
     net.add(S120)
 
+#S120.delay = 'minDelay + rand() * deltaDelay'
+S220 = Synapses(N2, N2,
+                    '''
+                    w : 1
+                    ''',
+                    on_pre='''
+                    v_post = clip(v_post+w,V_resetl1,1)
+                    ''',
+                    method='linear')
+
+S220.connect('i != j')
+S220.w = -0.15
+S220.delay = 0*ms
+
+net.add(S220)
 
 start_mon = plot_start_time*single_example_time
 
@@ -539,6 +555,7 @@ parameters = {
             'print_l2_weights' : print_l2_weights,
             'print_l2_traces' : print_l2_traces,
             'print_l2_state' : print_l2_state,
+            'print_statistics' : print_statistics,
             'print_neuron_reward' : print_neuron_reward,
             'print_neuron_l1' : print_neuron_l1,
             'print_neuron_l2' : print_neuron_l2,
@@ -711,6 +728,15 @@ if(print_neuron_l2):
         np.save(f, n2_times)
         np.save(f, n2_indices)
 
+if(print_statistics):
+    with open('./y_values.npy', file_mode) as f:
+        if not testing_phase:
+            my_set_y_flat  = train_y[first_example:set_size];
+        else:
+            my_set_y_flat  = test_y[first_example:set_size];
+        np.save(f, my_set_y_flat)
+
+
 step=int(plot_step_time*10);
 
 if(print_l1_membrana and print_l1_state):
@@ -810,7 +836,6 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 np.save(f, state2_plot)
                 np.save(f, state3_plot)
                 np.save(f, state4_plot)
-
 
 with open('./previous_state.npy', 'wb') as f:
     np.save(f, np.array(N1.v))
