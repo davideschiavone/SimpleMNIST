@@ -3,14 +3,14 @@ import math
 
 class DataSetSequence():
 
-    def __init__(self, x_set, y_set, batch_size, file_name):
-        self.x, self.y = x_set, y_set
-        self.batch_size = batch_size
-        self.file_name  = file_name
-
-    def __init__(self, batch_size, file_name):
-        self.batch_size = batch_size
-        self.file_name  = file_name
+    def __init__(self, x_set, y_set, batch_size, file_name, create):
+        if create:
+            self.x, self.y = x_set, y_set
+            self.batch_size = batch_size
+            self.file_name  = file_name
+        else:
+            self.batch_size = batch_size
+            self.file_name  = file_name
 
     def len(self):
         return math.ceil(len(self.x) / self.batch_size)
