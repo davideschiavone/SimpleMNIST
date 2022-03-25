@@ -11,5 +11,5 @@ $ conda env create -f environment.yml
 Activate the environment with
 
 ```bash
-$ source activate SimpleMNIST
+$ conda activate SimpleMNIST
 ```
