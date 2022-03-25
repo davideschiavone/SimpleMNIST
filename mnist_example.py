@@ -80,8 +80,14 @@ print("Using previous state: " + str(previous_state))
 dss_train = DataSetSequence(None, None, 256,'Batches/train', False)
 dss_test  = DataSetSequence(None, None, 256,'Batches/test', False)
 
-(train_X, train_y) = dss_train.getItem(batch_number)
-(test_X, test_y)   = dss_test.getItem(0)
+testing_phase      = parameter['testing_phase']
+
+if not testing_phase:
+    (train_X, train_y) = dss_train.getItem(batch_number)
+    (test_X, test_y)   = dss_test.getItem(0)
+else:
+    (test_X, test_y)   = dss_test.getItem(batch_number)
+    (train_X, train_y) = dss_train.getItem(0)
 
 classes       = np.arange(0,10)
 classes_color = ['y', 'k', 'b', 'r', 'g', 'c', 'm','k', 'b', 'r' ]
@@ -123,7 +129,6 @@ training_example   = X_Train_Samples if parameter['training_example']==-1 else p
 monitor_step       = parameter['monitor_step']
 plot_step_time     = parameter['plot_step_time']
 testing_example    = X_Test_Samples if parameter['testing_example']==-1 else parameter['testing_example'];
-testing_phase      = parameter['testing_phase']
 
 learning_1_phase   = parameter['learning_1_phase']
 learning_2_phase   = parameter['learning_2_phase']
@@ -626,7 +631,7 @@ for x_flat in my_set_X_flat:
     1   becomes 40us
     '''
 
-    n0_s    = np.where(x_flat > 0)[0]
+    n0_s    = np.where(x_flat > 190)[0]
     n0_t    = ts_time + (256 - x_flat[n0_s])*10/255
 
     n0_s_list = np.concatenate((n0_s_list, n0_s))
