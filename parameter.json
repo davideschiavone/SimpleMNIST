@@ -3,7 +3,7 @@
     "N2_Neurons":10,
     "device":"cpp",
     "first_example":0,
-    "training_example":3,
+    "training_example":10,
     "monitor_step":1,
     "plot_start_time":0,
     "plot_duration_time":-1,
@@ -22,7 +22,7 @@
     "print_l2_weights": false,
     "print_l2_traces": false,
     "print_l2_state": false,
-    "print_statistics": false,
+    "print_statistics": true,
     "print_neuron_reward": false,
     "print_neuron_l1": true,
     "print_neuron_l2": false

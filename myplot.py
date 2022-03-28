@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.manifold import TSNE
 import sys
 import json
 import os
@@ -16,29 +17,35 @@ if argc > 1:
 else:
     xlim_start_idx = 0
 
-xlim_start = sim_json['simulations'][xlim_start_idx]['plot_start']
 
 total_duration = 0
-plot_start_lst = [ sim_json['simulations'][xlim_start_idx]['plot_start'] ]
+plot_start_lst = [ ]
 
 if argc > 2:
     xlim_end_idx = int(sys.argv[2])
 else:
-    xlim_end_idx = 0
+    xlim_end_idx = len(sim_json['simulations'])
 
+
+plot_simulations = sim_json['simulations'][xlim_start_idx:xlim_end_idx]
+
+print(plot_simulations)
+
+for sim in sim_json['simulations']:
+    if sim in plot_simulations:
+        total_duration+= sim['plot_end'] - sim['plot_start']
+        plot_start_lst.append(total_duration)
+
+xlim_start = sim_json['simulations'][0]['plot_start']
 
 i_count = 0
 for sim in sim_json['simulations']:
-    total_duration+= sim['plot_end'] - sim['plot_start']
-    plot_start_lst.append(total_duration)
-    if argc > 2:
-        if i_count >= xlim_end_idx:
-            break
-    i_count+=1
-
-print(plot_start_lst)
+    if sim in plot_simulations:
+        xlim_start += plot_start_lst[i_count]
+        i_count+=1
 
 xlim_end   = xlim_start + total_duration
+
 
 N0_Neurons          = sim_json['parameters']['N0_Neurons']
 N1_Neurons          = sim_json['parameters']['N1_Neurons']
@@ -72,12 +79,10 @@ if(print_neuron_l0):
         for sim in sim_json['simulations']:
             n0_times   = np.load(f)
             n0_indices = np.load(f)
-            n0_times   = n0_times*1000 + plot_start_lst[i_count]
-            plt.plot(n0_times, n0_indices, '.k')
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                n0_times   = n0_times*1000 + plot_start_lst[i_count]
+                plt.plot(n0_times, n0_indices, '.k')
+                i_count+=1
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,N0_Neurons))
     if not testing_phase:
@@ -96,12 +101,10 @@ if(print_neuron_reward):
         for sim in sim_json['simulations']:
             nr_times   = np.load(f)
             nr_indices = np.load(f)
-            nr_times   = nr_times*1000 + plot_start_lst[i_count]
-            plt.plot(nr_times, nr_indices, '*r')
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                nr_times   = nr_times*1000 + plot_start_lst[i_count]
+                plt.plot(nr_times, nr_indices, '*r')
+                i_count+=1
 
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,Reward_Neurons))
@@ -124,15 +127,13 @@ if(print_neuron_l1):
         for sim in sim_json['simulations']:
             n1_times   = np.load(f)
             n1_indices = np.load(f)
-            n1_times   = n1_times*1000 + plot_start_lst[i_count]
-            if(print_statistics):
-                n1_times_list.append(n1_times)
-                n1_indices_list.append(n1_indices)
-            plt.plot(n1_times, n1_indices, '.k')
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                n1_times   = n1_times*1000 + plot_start_lst[i_count]
+                plt.plot(n1_times, n1_indices, '.k')
+                if(print_statistics):
+                    n1_times_list.append(n1_times)
+                    n1_indices_list.append(n1_indices)
+                i_count+=1
 
     plt.ylim((-0.5,N1_Neurons))
     plt.xlim((xlim_start, xlim_end))
@@ -156,15 +157,13 @@ if(print_neuron_l2):
         for sim in sim_json['simulations']:
             n2_times   = np.load(f)
             n2_indices = np.load(f)
-            n2_times   = n2_times*1000 + plot_start_lst[i_count]
-            if(print_statistics):
-                n2_times_list.append(n2_times)
-                n2_indices_list.append(n2_indices)
-            plt.plot(n2_times, n2_indices, '.k')
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                n2_times   = n2_times*1000 + plot_start_lst[i_count]
+                plt.plot(n2_times, n2_indices, '.k')
+                if(print_statistics):
+                    n2_times_list.append(n2_times)
+                    n2_indices_list.append(n2_indices)
+                i_count+=1
     plt.ylim((-0.5,N2_Neurons))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
@@ -183,13 +182,10 @@ if(print_statistics):
         i_count = 0
         for sim in sim_json['simulations']:
             y_values = np.load(f)
-            times    = np.arange(0, len(y_values)*25, 25) + plot_start_lst[i_count]
-            i_count  = i_count + 1
-            plt.plot(times, y_values, '.k')
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                times    = np.arange(0, len(y_values)*25, 25) + plot_start_lst[i_count]
+                plt.plot(times, y_values, '.k')
+                i_count+=1
 
     plt.ylim((-0.5, 10))
     plt.xlim((xlim_start, xlim_end))
@@ -201,14 +197,16 @@ if(print_statistics):
 
 if(print_neuron_l1 and print_statistics):
     y_values_list = []
+    total_samples = 0
     with open('./y_values.npy', 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
-            y_values_list.append(np.load(f))
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            y_values = np.load(f)
+            if sim in plot_simulations:
+                y_values_list.append(y_values)
+                num_samples = len(y_values)
+                total_samples += num_samples
+                i_count+=1
 
     i_count = 0
 
@@ -224,7 +222,10 @@ if(print_neuron_l1 and print_statistics):
 
     with open('./l1_firing.txt', 'w') as f:
 
-        sample_proc = 0
+
+        h1_vector = np.zeros((total_samples, N1_Neurons))
+        labels    = np.zeros(total_samples)
+
         sim_step = 0
         for y_values in y_values_list:
             num_samples = len(y_values)
@@ -241,10 +242,23 @@ if(print_neuron_l1 and print_statistics):
                 stats_dict['per_class_max_firing_neurons'][class_sample] = stats_dict['per_class_max_firing_neurons'][class_sample] if stats_dict['per_class_max_firing_neurons'][class_sample] > len(n1i_cond) else len(n1i_cond)
                 stats_dict['per_class_min_firing_neurons'][class_sample] = stats_dict['per_class_min_firing_neurons'][class_sample] if stats_dict['per_class_min_firing_neurons'][class_sample] < len(n1i_cond) else len(n1i_cond)
 
-                sample_proc += 1
+                h1_vector[samples,n1i_cond] =np.ones(n1i_cond.shape)
+                labels[samples]    = class_sample
 
             sim_step = sim_step + 25*num_samples
             i_count = i_count+1
+
+
+        h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
+        k = np.array(h1_embedded)
+
+        plt.figure(1)
+        plt.scatter(k[:, 0], k[:, 1], c=labels, zorder=10, s=0.4)
+        if not testing_phase:
+            plt.savefig(figpath + 'l1_tsne.png')
+        else:
+            plt.savefig(figpath + 'l1_tsne_test.png')
+        plt.close(1)
 
         for y in range(10):
             if stats_dict['per_class_samples'][y] != 0:
@@ -290,11 +304,10 @@ if(print_neuron_l2 and print_statistics):
     with open('./y_values.npy', 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
-            y_values_list.append(np.load(f))
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            y_values = np.load(f)
+            if sim in plot_simulations:
+                y_values_list.append(y_values)
+                i_count+=1
 
     i_count = 0
     for y_values in y_values_list:
@@ -342,11 +355,9 @@ if(print_l1_membrana and print_l1_state):
         time_plot_lst = []
         for sim in sim_json['simulations']:
             time_plot = np.load(f)
-            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+                i_count+=1
 
     with open('./Weights/l1_membrana_value.npy', 'rb') as f:
         neurons_plots = {str(n1):[] for n1 in range(N1_Neurons)}
@@ -354,11 +365,9 @@ if(print_l1_membrana and print_l1_state):
         for sim in sim_json['simulations']:
             for n1 in range(N1_Neurons):
                 state_plot = np.load(f)
-                neurons_plots[str(n1)].append(state_plot)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+                if sim in plot_simulations:
+                    neurons_plots[str(n1)].append(state_plot)
+                    i_count+=1
 
         analog_plots['neurons'] = neurons_plots
 
@@ -407,11 +416,9 @@ if(print_l2_membrana and print_l2_state):
         time_plot_lst = []
         for sim in sim_json['simulations']:
             time_plot = np.load(f)
-            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+                i_count+=1
 
     with open('./Weights/l2_membrana_value.npy', 'rb') as f:
         neurons_plots = {str(n2):[] for n2 in range(N2_Neurons)}
@@ -419,11 +426,9 @@ if(print_l2_membrana and print_l2_state):
         for sim in sim_json['simulations']:
             for n2 in range(N2_Neurons):
                 state_plot = np.load(f)
-                neurons_plots[str(n2)].append(state_plot)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+                if sim in plot_simulations:
+                    neurons_plots[str(n2)].append(state_plot)
+                    i_count+=1
         analog_plots['neurons'] = neurons_plots
 
     fig_counter = 1
@@ -476,24 +481,18 @@ if(print_l2_weights and print_l2_state):
         time_plot_lst = []
         for sim in sim_json['simulations']:
             time_plot = np.load(f)
-            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+                i_count+=1
 
     with open('./Weights/l2_weights_value.npy', 'rb') as f:
         weights_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
-        i_count = 0
         for sim in sim_json['simulations']:
             for n2 in range(N2_Neurons):
                 for n1 in range(N1_Neurons):
                     state_plot = np.load(f)
-                    weights_plots[str(n2)+":"+str(n1)].append(state_plot)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+                    if sim in plot_simulations:
+                        weights_plots[str(n2)+":"+str(n1)].append(state_plot)
 
         analog_plots['weights'] = weights_plots
 
@@ -564,24 +563,18 @@ if(print_l1_weights and print_l1_state):
         time_plot_lst = []
         for sim in sim_json['simulations']:
             time_plot = np.load(f)
-            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+                i_count+=1
 
     with open('./Weights/l1_weights_value.npy', 'rb') as f:
         weights_plots = {str(n1)+":"+str(n0):[] for n1 in range(N1_Neurons) for n0 in range(N0_Neurons)}
-        i_count = 0
         for sim in sim_json['simulations']:
             for n1 in range(N1_Neurons):
                 for n0 in range(N0_Neurons):
                     state_plot = np.load(f)
-                    weights_plots[str(n1)+":"+str(n0)].append(state_plot)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+                    if sim in plot_simulations:
+                        weights_plots[str(n1)+":"+str(n0)].append(state_plot)
 
         analog_plots['weights'] = weights_plots
 
@@ -659,33 +652,31 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
         time_plot_lst = []
         for sim in sim_json['simulations']:
             time_plot = np.load(f)
-            analog_plots['times'].append(time_plot + plot_start_lst[i_count])
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+            if sim in plot_simulations:
+                analog_plots['times'].append(time_plot + plot_start_lst[i_count])
+                i_count+=1
 
     with open('./Weights/l2_trace_value.npy', 'rb') as f:
         apre_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         apost_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         reward_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         punish_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
-        i_count = 0
+
         for sim in sim_json['simulations']:
             for n2 in range(N2_Neurons):
                 for n1 in range(N1_Neurons):
                     state_plot = np.load(f)
-                    apre_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    if sim in plot_simulations:
+                        apre_plots[str(n2)+":"+str(n1)].append(state_plot)
                     state_plot = np.load(f)
-                    apost_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    if sim in plot_simulations:
+                        apost_plots[str(n2)+":"+str(n1)].append(state_plot)
                     state_plot = np.load(f)
-                    reward_plots[str(n2)+":"+str(n1)].append(state_plot)
+                    if sim in plot_simulations:
+                        reward_plots[str(n2)+":"+str(n1)].append(state_plot)
                     state_plot = np.load(f)
-                    punish_plots[str(n2)+":"+str(n1)].append(state_plot)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
-            i_count+=1
+                    if sim in plot_simulations:
+                        punish_plots[str(n2)+":"+str(n1)].append(state_plot)
 
         analog_plots['apre'] = apre_plots
         analog_plots['apost'] = apost_plots
@@ -746,20 +737,18 @@ if learning_1_phase:
         i_count = 0
         for sim in sim_json['simulations']:
             weight_matrix = np.load(f)
-            max_w = weight_matrix.max()
-            for n1 in range(N1_Neurons):
-                figpath_n1 = figpath + 'weights_l1/n' + str(n1)
-                if not os.path.exists(figpath_n1):
-                    os.makedirs(figpath_n1)
-                plt.figure(1)
-                weight_img = np.reshape(weight_matrix[n1,:], (28,28));
-                weight_img = weight_img/max_w*255
-                plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-                plt.savefig(figpath_n1 + '/l1_weights_img_' + str(i_count) + '_' + str(n1) + '.png')
-                plt.close(1)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
+            if sim in plot_simulations:
+                max_w = weight_matrix.max()
+                for n1 in range(N1_Neurons):
+                    figpath_n1 = figpath + 'weights_l1/n' + str(n1)
+                    if not os.path.exists(figpath_n1):
+                        os.makedirs(figpath_n1)
+                    plt.figure(1)
+                    weight_img = np.reshape(weight_matrix[n1,:], (28,28));
+                    weight_img = weight_img/max_w*255
+                    plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
+                    plt.savefig(figpath_n1 + '/l1_weights_img_' + str(i_count) + '_' + str(n1) + '.png')
+                    plt.close(1)
             i_count+=1
 
 if learning_2_phase:
@@ -767,19 +756,17 @@ if learning_2_phase:
         i_count = 0
         for sim in sim_json['simulations']:
             weight_matrix = np.load(f)
-            max_w = weight_matrix.max()
-            for n2 in range(N2_Neurons):
-                figpath_n2 = figpath + 'weights_l2/n' + str(n2)
-                if not os.path.exists(figpath_n2):
-                    os.makedirs(figpath_n2)
-                plt.figure(1)
-                weight_img = np.reshape(weight_matrix[n2,:], (10,10));
-                weight_img = weight_img/max_w*255
-                plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-                plt.savefig(figpath_n2 + '/l2_weights_img_' + str(i_count) + '_' + str(n2) + '.png')
-                plt.close(1)
-            if argc > 2:
-                if i_count >= xlim_end_idx:
-                    break
+            if sim in plot_simulations:
+                max_w = weight_matrix.max()
+                for n2 in range(N2_Neurons):
+                    figpath_n2 = figpath + 'weights_l2/n' + str(n2)
+                    if not os.path.exists(figpath_n2):
+                        os.makedirs(figpath_n2)
+                    plt.figure(1)
+                    weight_img = np.reshape(weight_matrix[n2,:], (10,10));
+                    weight_img = weight_img/max_w*255
+                    plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
+                    plt.savefig(figpath_n2 + '/l2_weights_img_' + str(i_count) + '_' + str(n2) + '.png')
+                    plt.close(1)
             i_count+=1
 
