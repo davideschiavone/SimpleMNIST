@@ -216,7 +216,7 @@ if(print_neuron_l1 and print_statistics):
 
     with open('./l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv', 'w', encoding='UTF8') as fcsv:
 
-        writer = csv.writer(fcsv)
+        writer = csv.writer(fcsv, delimiter=',')
 
         header = ['class']
 
@@ -248,16 +248,15 @@ if(print_neuron_l1 and print_statistics):
                     stats_dict['per_class_firing_neurons'][class_sample,n1i_cond]+=np.ones(n1i_cond.shape)
                     stats_dict['per_class_max_firing_neurons'][class_sample] = stats_dict['per_class_max_firing_neurons'][class_sample] if stats_dict['per_class_max_firing_neurons'][class_sample] > len(n1i_cond) else len(n1i_cond)
                     stats_dict['per_class_min_firing_neurons'][class_sample] = stats_dict['per_class_min_firing_neurons'][class_sample] if stats_dict['per_class_min_firing_neurons'][class_sample] < len(n1i_cond) else len(n1i_cond)
-
                     h1_vector[samples,n1i_cond] = np.ones(n1i_cond.shape)
                     labels[samples]    = class_sample
-                    csvdata = [class_sample, np.zeros(N1_Neurons)]
-                    csvdata[1:n1i_cond] = np.ones(n1i_cond.shape)
+                    csvdata = [class_sample]
+                    for h in h1_vector[samples]:
+                        csvdata.append(h)
                     writer.writerow(csvdata)
 
                 sim_step = sim_step + 25*num_samples
                 i_count = i_count+1
-
 
             h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
             k = np.array(h1_embedded)
