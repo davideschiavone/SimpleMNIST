@@ -89,6 +89,8 @@ else:
     (test_X, test_y)   = dss_test.getItem(batch_number)
     (train_X, train_y) = dss_train.getItem(0)
 
+print(train_y[0:10])
+
 classes       = np.arange(0,10)
 classes_color = ['y', 'k', 'b', 'r', 'g', 'c', 'm','k', 'b', 'r' ]
 classes_sizes = np.arange(0,10)

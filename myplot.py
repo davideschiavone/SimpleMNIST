@@ -4,6 +4,7 @@ from sklearn.manifold import TSNE
 import sys
 import json
 import os
+import csv
 
 figpath = './figures/'
 
@@ -16,7 +17,6 @@ if argc > 1:
     xlim_start_idx = int(sys.argv[1])
 else:
     xlim_start_idx = 0
-
 
 total_duration = 0
 plot_start_lst = [ ]
@@ -31,21 +31,15 @@ plot_simulations = sim_json['simulations'][xlim_start_idx:xlim_end_idx]
 
 print(plot_simulations)
 
+xlim_start = sim_json['simulations'][xlim_start_idx]['plot_start']
+plot_start_lst = [ sim_json['simulations'][xlim_start]['plot_start'] ]
+
 for sim in sim_json['simulations']:
     if sim in plot_simulations:
         total_duration+= sim['plot_end'] - sim['plot_start']
         plot_start_lst.append(total_duration)
 
-xlim_start = sim_json['simulations'][0]['plot_start']
-
-i_count = 0
-for sim in sim_json['simulations']:
-    if sim in plot_simulations:
-        xlim_start += plot_start_lst[i_count]
-        i_count+=1
-
 xlim_end   = xlim_start + total_duration
-
 
 N0_Neurons          = sim_json['parameters']['N0_Neurons']
 N1_Neurons          = sim_json['parameters']['N1_Neurons']
@@ -86,9 +80,9 @@ if(print_neuron_l0):
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,N0_Neurons))
     if not testing_phase:
-        plt.savefig(figpath + 'l0_stream.png')
+        plt.savefig(figpath + 'l0_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l0_stream_test.png')
+        plt.savefig(figpath + 'l0_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_reward):
@@ -109,7 +103,7 @@ if(print_neuron_reward):
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,Reward_Neurons))
     if not testing_phase:
-        plt.savefig(figpath + 'lreward_stream.png')
+        plt.savefig(figpath + 'lreward_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_l1):
@@ -138,9 +132,9 @@ if(print_neuron_l1):
     plt.ylim((-0.5,N1_Neurons))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'l1_stream.png')
+        plt.savefig(figpath + 'l1_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l1_stream_test.png')
+        plt.savefig(figpath + 'l1_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 
@@ -167,9 +161,9 @@ if(print_neuron_l2):
     plt.ylim((-0.5,N2_Neurons))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'l2_stream.png')
+        plt.savefig(figpath + 'l2_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l2_stream_test.png')
+        plt.savefig(figpath + 'l2_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 
@@ -190,9 +184,9 @@ if(print_statistics):
     plt.ylim((-0.5, 10))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'classes.png')
+        plt.savefig(figpath + 'classes' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'classes_test.png')
+        plt.savefig(figpath + 'classes_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_l1 and print_statistics):
@@ -220,83 +214,99 @@ if(print_neuron_l1 and print_statistics):
                 'per_class_samples' : np.zeros(10)
             }
 
-    with open('./l1_firing.txt', 'w') as f:
+    with open('./l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv', 'w', encoding='UTF8') as fcsv:
+
+        writer = csv.writer(fcsv)
+
+        header = ['class']
+
+        for n1 in range(N1_Neurons):
+            header.append(str(n1))
+
+        writer.writerow(header)
+
+        with open('./l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.txt', 'w') as f:
 
 
-        h1_vector = np.zeros((total_samples, N1_Neurons))
-        labels    = np.zeros(total_samples)
+            h1_vector = np.zeros((total_samples, N1_Neurons))
+            labels    = np.zeros(total_samples)
 
-        sim_step = 0
-        for y_values in y_values_list:
-            num_samples = len(y_values)
-            for samples in range(num_samples):
-                class_sample   = y_values[samples]
-                n1t            = n1_times_list[i_count]
-                time_condition = (n1t < sim_step + 25*(samples+1)) & (n1t > sim_step + 25*samples)
-                n1i            = n1_indices_list[i_count]
-                index          = np.where(time_condition)[0]
-                n1t_cond       = n1t[index]
-                n1i_cond       = n1i[index]
-                stats_dict['per_class_samples'][class_sample] += 1
-                stats_dict['per_class_firing_neurons'][class_sample,n1i_cond]+=np.ones(n1i_cond.shape)
-                stats_dict['per_class_max_firing_neurons'][class_sample] = stats_dict['per_class_max_firing_neurons'][class_sample] if stats_dict['per_class_max_firing_neurons'][class_sample] > len(n1i_cond) else len(n1i_cond)
-                stats_dict['per_class_min_firing_neurons'][class_sample] = stats_dict['per_class_min_firing_neurons'][class_sample] if stats_dict['per_class_min_firing_neurons'][class_sample] < len(n1i_cond) else len(n1i_cond)
+            sim_step = 0
+            for y_values in y_values_list:
+                num_samples = len(y_values)
+                for samples in range(num_samples):
+                    class_sample   = y_values[samples]
+                    n1t            = n1_times_list[i_count]
+                    time_condition = (n1t < sim_step + 25*(samples+1)) & (n1t > sim_step + 25*samples)
+                    n1i            = n1_indices_list[i_count]
+                    index          = np.where(time_condition)[0]
+                    print('\nClass ' + str(class_sample) + ' fire \n', file=f)
+                    np.savetxt(f, index.astype(int), fmt='%i', newline=",")
+                    n1t_cond       = n1t[index]
+                    n1i_cond       = n1i[index]
+                    stats_dict['per_class_samples'][class_sample] += 1
+                    stats_dict['per_class_firing_neurons'][class_sample,n1i_cond]+=np.ones(n1i_cond.shape)
+                    stats_dict['per_class_max_firing_neurons'][class_sample] = stats_dict['per_class_max_firing_neurons'][class_sample] if stats_dict['per_class_max_firing_neurons'][class_sample] > len(n1i_cond) else len(n1i_cond)
+                    stats_dict['per_class_min_firing_neurons'][class_sample] = stats_dict['per_class_min_firing_neurons'][class_sample] if stats_dict['per_class_min_firing_neurons'][class_sample] < len(n1i_cond) else len(n1i_cond)
 
-                h1_vector[samples,n1i_cond] =np.ones(n1i_cond.shape)
-                labels[samples]    = class_sample
+                    h1_vector[samples,n1i_cond] = np.ones(n1i_cond.shape)
+                    labels[samples]    = class_sample
+                    csvdata = [class_sample, np.zeros(N1_Neurons)]
+                    csvdata[1:n1i_cond] = np.ones(n1i_cond.shape)
+                    writer.writerow(csvdata)
 
-            sim_step = sim_step + 25*num_samples
-            i_count = i_count+1
+                sim_step = sim_step + 25*num_samples
+                i_count = i_count+1
 
 
-        h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
-        k = np.array(h1_embedded)
+            h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
+            k = np.array(h1_embedded)
+
+            plt.figure(1)
+            plt.scatter(k[:, 0], k[:, 1], c=labels, zorder=10, s=0.4)
+            if not testing_phase:
+                plt.savefig(figpath + 'l1_tsne' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            else:
+                plt.savefig(figpath + 'l1_tsne_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            plt.close(1)
+
+            for y in range(10):
+                if stats_dict['per_class_samples'][y] != 0:
+                    stats_dict['per_class_firing_neurons_norm'][y] = stats_dict['per_class_firing_neurons'][y]/stats_dict['per_class_samples'][y]
+
+                print("\nstats_dict['per_class_firing_neurons'][" + str(y) + "] is: ", file=f)
+                np.savetxt(f, stats_dict['per_class_firing_neurons'][y].astype(int), fmt='%i', newline=",")
+
+                print("\nstats_dict['per_class_firing_neurons_norm'][" + str(y) + "] is: ", file=f)
+                np.savetxt(f, stats_dict['per_class_firing_neurons_norm'][y], fmt='%.4f', newline=",")
+
+                print("\nMax Firing: " + str(stats_dict['per_class_max_firing_neurons']),file=f)
+                print("Min Firing: " + str(stats_dict['per_class_min_firing_neurons']),file=f)
+                print("Total Samples: " + str( stats_dict['per_class_samples'][y] ),file=f)
+
+            print("\nGeneral view\n", file=f)
+            print("Max of Max Firing: " + str(np.max(stats_dict['per_class_max_firing_neurons'])) ,file=f)
+            print("Max of Max Firing Class: " + str(np.argmax(stats_dict['per_class_max_firing_neurons'])) ,file=f)
+            print("Min of Min Firing: " + str(np.min(stats_dict['per_class_min_firing_neurons'])) ,file=f)
+            print("Min of Min Firing Class: " + str(np.argmin(stats_dict['per_class_min_firing_neurons'])) ,file=f)
 
         plt.figure(1)
-        plt.scatter(k[:, 0], k[:, 1], c=labels, zorder=10, s=0.4)
-        if not testing_phase:
-            plt.savefig(figpath + 'l1_tsne.png')
-        else:
-            plt.savefig(figpath + 'l1_tsne_test.png')
-        plt.close(1)
-
+        plt.title("L1 Statistics")
+        plt.xlabel('N1 Neurons')
+        plt.ylabel('Counts')
+        plt.grid(True)
         for y in range(10):
-            if stats_dict['per_class_samples'][y] != 0:
-                stats_dict['per_class_firing_neurons_norm'][y] = stats_dict['per_class_firing_neurons'][y]/stats_dict['per_class_samples'][y]
+            ax1 = plt.subplot2grid((10,1), (y,0))
+            ax1.set_title(str(y))
+            plt.plot(range(N1_Neurons),stats_dict['per_class_firing_neurons_norm'][y])
+        plt.ylim((0,0.4))
+        plt.xlim((0, N1_Neurons))
 
-            print("stats_dict['per_class_firing_neurons'][" + str(y) + "] is: ", file=f)
-            np.savetxt(f, stats_dict['per_class_firing_neurons'][y].astype(int), fmt='%i', newline=",")
-
-            print("\nstats_dict['per_class_firing_neurons_norm'][" + str(y) + "] is: ", file=f)
-            np.savetxt(f, stats_dict['per_class_firing_neurons_norm'][y], fmt='%.4f', newline=",")
-
-            print("\nMax Firing: " + str(stats_dict['per_class_max_firing_neurons']),file=f)
-            print("Min Firing: " + str(stats_dict['per_class_min_firing_neurons']),file=f)
-            print("Total Samples: " + str( stats_dict['per_class_samples'][y] ),file=f)
-
-        print("\nGeneral view\n", file=f)
-        print("Max of Max Firing: " + str(np.max(stats_dict['per_class_max_firing_neurons'])) ,file=f)
-        print("Max of Max Firing Class: " + str(np.argmax(stats_dict['per_class_max_firing_neurons'])) ,file=f)
-        print("Min of Min Firing: " + str(np.min(stats_dict['per_class_min_firing_neurons'])) ,file=f)
-        print("Min of Min Firing Class: " + str(np.argmin(stats_dict['per_class_min_firing_neurons'])) ,file=f)
-
-    plt.figure(1)
-    plt.title("L1 Statistics")
-    plt.xlabel('N1 Neurons')
-    plt.ylabel('Counts')
-    plt.grid(True)
-    for y in range(10):
-        ax1 = plt.subplot2grid((10,1), (y,0))
-        ax1.set_title(str(y))
-        plt.plot(range(N1_Neurons),stats_dict['per_class_firing_neurons_norm'][y])
-    plt.ylim((0,0.4))
-    plt.xlim((0, N1_Neurons))
-
-    if not testing_phase:
-        plt.savefig(figpath + 'l1_statistics.png')
-    else:
-        plt.savefig(figpath + 'l1_statistics_test.png')
-    plt.close(1)
+        if not testing_phase:
+            plt.savefig(figpath + 'l1_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        else:
+            plt.savefig(figpath + 'l1_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.close(1)
 
 if(print_neuron_l2 and print_statistics):
     stat_matrix = np.zeros((10, N2_Neurons));
@@ -340,9 +350,9 @@ if(print_neuron_l2 and print_statistics):
     plt.xlim((0, N2_Neurons))
 
     if not testing_phase:
-        plt.savefig(figpath + 'l2_statistics.png')
+        plt.savefig(figpath + 'l2_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l2_statistics_test.png')
+        plt.savefig(figpath + 'l2_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_l1_membrana and print_l1_state):
@@ -394,16 +404,16 @@ if(print_l1_membrana and print_l1_state):
         if (n1 % 4 == 3):
             stop_counter = 0
             if not testing_phase:
-                plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
     if (stop_counter):
         if not testing_phase:
-            plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if(print_l2_membrana and print_l2_state):
@@ -459,16 +469,16 @@ if(print_l2_membrana and print_l2_state):
         if (n2 % 5 == 4):
             stop_counter = 0
             if not testing_phase:
-                plt.savefig(figpath_n2 + '/l2_membrana_value' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n2 + '/l2_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath_n2 + '/l2_membrana_value_test' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n2 + '/l2_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
     if (stop_counter):
         if not testing_phase:
-            plt.savefig(figpath_n2 + '/l2_membrana_value' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath_n2 + '/l2_membrana_value_test' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if(print_l2_weights and print_l2_state):
@@ -533,24 +543,24 @@ if(print_l2_weights and print_l2_state):
             if (n1 % 10 == 9):
                 stop_counter = 0
                 if not testing_phase:
-                    plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 else:
-                    plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 plt.close(1)
 
         if (stop_counter):
             stop_counter = 0
             if not testing_phase:
-                plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
     if (stop_counter):
         if not testing_phase:
-            plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if(print_l1_weights and print_l1_state):
@@ -618,24 +628,24 @@ if(print_l1_weights and print_l1_state):
                 if (n0 % 14 == 13):
                     stop_counter = 0
                     if not testing_phase:
-                        plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '.png')
+                        plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                     else:
-                        plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '.png')
+                        plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                     plt.close(1)
 
             if (stop_counter):
                 stop_counter = 0
                 if not testing_phase:
-                    plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 else:
-                    plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 plt.close(1)
 
         if (stop_counter):
             if not testing_phase:
-                plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n1 + '/l1_weight_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '.png')
+                plt.savefig(figpath_n1 + '/l1_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
 
@@ -720,16 +730,16 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
             if (n1 % 10 == 9):
                 stop_counter = 0
                 if not testing_phase:
-                    plt.savefig(figpath_n2 + '/l2_trace_value' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n2 + '/l2_trace_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 else:
-                    plt.savefig(figpath_n2 + '/l2_trace_value_test' + str(fig_counter-1) + '.png')
+                    plt.savefig(figpath_n2 + '/l2_trace_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                 plt.close(1)
 
     if (stop_counter):
         if not testing_phase:
-            plt.savefig(figpath_n2 + '/l2_trace_value' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_trace_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath_n2 + '/l2_trace_value_test' + str(fig_counter-1) + '.png')
+            plt.savefig(figpath_n2 + '/l2_trace_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if learning_1_phase:
@@ -747,7 +757,7 @@ if learning_1_phase:
                     weight_img = np.reshape(weight_matrix[n1,:], (28,28));
                     weight_img = weight_img/max_w*255
                     plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-                    plt.savefig(figpath_n1 + '/l1_weights_img_' + str(i_count) + '_' + str(n1) + '.png')
+                    plt.savefig(figpath_n1 + '/l1_weights_img_' + str(i_count) + '_' + str(n1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                     plt.close(1)
             i_count+=1
 
@@ -766,7 +776,7 @@ if learning_2_phase:
                     weight_img = np.reshape(weight_matrix[n2,:], (10,10));
                     weight_img = weight_img/max_w*255
                     plt.imshow(weight_img, cmap=plt.get_cmap('gray'))
-                    plt.savefig(figpath_n2 + '/l2_weights_img_' + str(i_count) + '_' + str(n2) + '.png')
+                    plt.savefig(figpath_n2 + '/l2_weights_img_' + str(i_count) + '_' + str(n2) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
                     plt.close(1)
             i_count+=1
 
