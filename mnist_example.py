@@ -230,8 +230,12 @@ if(plt_example_mnist):
             plt.savefig(figpath + '2_first_nine_per_class_' + str(k) + '_test.png')
         plt.close(1)
 
+filename = './previous_state.npy'
+if testing_phase:
+    filename = './previous_state_test.npy'
+
 if previous_state:
-    with open('./previous_state.npy', 'rb') as f:
+    with open(filename, 'rb') as f:
         N1v = np.load(f)
         N1a = np.load(f)
         if use_l2:
@@ -575,8 +579,12 @@ parameters = {
             'learning_2_phase' : learning_2_phase,
             }
 
+filename = 'sim_values.json'
+if testing_phase:
+    filename = 'sim_values_test.json'
+
 if previous_state:
-    old_sim_json_file = open('sim_values.json')
+    old_sim_json_file = open(filename)
     sim_json          = json.load(old_sim_json_file)
     sim_json['simulations'].append(sim_dict)
 else:
@@ -587,7 +595,7 @@ else:
         ]
     }
 
-with open('sim_values.json', 'w') as f:
+with open(filename, 'w') as f:
     json_string = json.dumps(sim_json, indent=2)
     f.write(json_string)
 
@@ -722,34 +730,50 @@ file_mode = 'ab' if previous_state else 'wb'
 
 if(print_neuron_l0):
     n0_indices, n0_times = N0mon.it
-    with open('./Weights/l0_stream.npy', file_mode) as f:
+    filename = './Weights/l0_stream.npy'
+    if testing_phase:
+        filename = './Weights/l0_stream_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, n0_times)
         np.save(f, n0_indices)
 
 if(print_neuron_reward and use_l2):
     nreward_indices, nreward_times = NRewardmon.it
-    with open('./Weights/lreward_stream.npy', file_mode) as f:
+    filename = './Weights/lreward_stream.npy'
+    if testing_phase:
+        filename = './Weights/lreward_stream_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, nreward_times)
         np.save(f, nreward_indices)
 
 if(print_neuron_l1):
     n1_indices, n1_times = N1mon.it
-    with open('./Weights/l1_stream.npy', file_mode) as f:
+    filename = './Weights/l1_stream.npy'
+    if testing_phase:
+        filename = './Weights/l1_stream_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, n1_times)
         np.save(f, n1_indices)
 
 if(print_neuron_l2 and use_l2):
     n2_indices, n2_times = N2mon.it
-    with open('./Weights/l2_stream.npy', file_mode) as f:
+    filename = './Weights/l2_stream.npy'
+    if testing_phase:
+        filename = './Weights/l2_stream_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, n2_times)
         np.save(f, n2_indices)
 
 if(print_statistics):
-    with open('./y_values.npy', file_mode) as f:
+    filename = './y_values.npy'
+    if testing_phase:
+        filename = './y_values_test.npy'
+    with open(filename, file_mode) as f:
         if not testing_phase:
             my_set_y_flat  = train_y[first_example:set_size];
         else:
             my_set_y_flat  = test_y[first_example:set_size];
+            print(test_y[first_example:set_size])
         np.save(f, my_set_y_flat)
 
 
@@ -762,9 +786,15 @@ if(print_l1_membrana and print_l1_state):
     sample_time_index     = sample_time_index[0:-1:step];
     N1state_times_no_plot = N1state_times_no_plot[0:-1:step];
     time_plot             = N1state_times_no_plot/ms
-    with open('./Weights/l1_membrana_time.npy', file_mode) as f:
+    filename = './Weights/l1_membrana_time.npy'
+    if testing_phase:
+        filename = './Weights/l1_membrana_time_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l1_membrana_value.npy', file_mode) as f:
+    filename = './Weights/l1_membrana_value.npy'
+    if testing_phase:
+        filename = './Weights/l1_membrana_value_test.npy'
+    with open(filename, file_mode) as f:
         for n1 in range(N1_Neurons):
             state_plot = N1state.v[n1][sample_time_index]
             np.save(f, state_plot)
@@ -776,16 +806,25 @@ if(print_l2_membrana and print_l2_state and use_l2):
     sample_time_index     = sample_time_index[0:-1:step];
     N2state_times_no_plot = N2state_times_no_plot[0:-1:step];
     time_plot             = N2state_times_no_plot/ms
-    with open('./Weights/l2_membrana_time.npy', file_mode) as f:
+    filename = './Weights/l2_membrana_time.npy'
+    if testing_phase:
+        filename = './Weights/l2_membrana_time_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l2_membrana_value.npy', file_mode) as f:
+    filename = './Weights/l2_membrana_value.npy'
+    if testing_phase:
+        filename = './Weights/l2_membrana_value_test.npy'
+    with open(filename, file_mode) as f:
         for n2 in range(N2_Neurons):
             state_plot = N2state.v[n2][sample_time_index]
             np.save(f, state_plot)
 
 if(print_l1_weights):
     if learning_1_phase:
-        with open('./Weights/l1_weights.npy', file_mode) as f:
+        filename = './Weights/l1_weights.npy'
+        if testing_phase:
+            filename = './Weights/l1_weights_test.npy'
+        with open(filename, file_mode) as f:
             weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
             weight_matrix = np.reshape(weight_matrix,(N1_Neurons,N0_Neurons))
             np.save(f, weight_matrix)
@@ -796,9 +835,15 @@ if(print_l1_weights):
             sample_time_index        = sample_time_index[0:-1:step];
             S010state_times_no_plot  = S010state_times_no_plot[0:-1:step];
             time_plot                = S010state_times_no_plot/ms
-            with open('./Weights/l1_weights_time.npy', file_mode) as f:
+            filename = './Weights/l1_weights_time.npy'
+            if testing_phase:
+                filename = './Weights/l1_weights_time_test.npy'
+            with open(filename, file_mode) as f:
                 np.save(f, time_plot)
-            with open('./Weights/l1_weights_value.npy', file_mode) as f:
+            filename = './Weights/l1_weights_value.npy'
+            if testing_phase:
+                filename = './Weights/l1_weights_value_test.npy'
+            with open(filename, file_mode) as f:
                 for n1 in range(N1_Neurons):
                     for weights in range(N0_Neurons):
                         state_plot = S010state.w[weights+(n1*N0_Neurons)][sample_time_index];
@@ -806,7 +851,10 @@ if(print_l1_weights):
 
 if(print_l2_weights and use_l2):
     if learning_2_phase:
-        with open('./Weights/l2_weights.npy', file_mode) as f:
+        filename = './Weights/l2_weights.npy'
+        if testing_phase:
+            filename = './Weights/l2_weights_test.npy'
+        with open(filename, file_mode) as f:
             weight_matrix = S120.w.get_item(item=np.arange(N1_Neurons*N2_Neurons))
             weight_matrix = np.reshape(weight_matrix,(N2_Neurons,N1_Neurons))
             np.save(f, weight_matrix)
@@ -817,9 +865,15 @@ if(print_l2_weights and use_l2):
             sample_time_index        = sample_time_index[0:-1:step];
             S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
             time_plot                = S120state_times_no_plot/ms
-            with open('./Weights/l2_weights_time.npy', file_mode) as f:
+            filename = './Weights/l2_weights_time.npy'
+            if testing_phase:
+                filename = './Weights/l2_weights_time_test.npy'
+            with open(filename, file_mode) as f:
                 np.save(f, time_plot)
-            with open('./Weights/l2_weights_value.npy', file_mode) as f:
+            filename = './Weights/l2_weights_value.npy'
+            if testing_phase:
+                filename = './Weights/l2_weights_value_test.npy'
+            with open(filename, file_mode) as f:
                 for n2 in range(N2_Neurons):
                     for weights in range(N1_Neurons):
                         state_plot = S120state.w[weights+(n2*N1_Neurons)][sample_time_index];
@@ -832,9 +886,15 @@ if(print_l1_traces and learning_1_phase and print_l1_state):
     sample_time_index       = sample_time_index[0:-1:step];
     S010state_times_no_plot = S010state_times_no_plot[0:-1:step];
     time_plot               = S010state_times_no_plot/ms
-    with open('./Weights/l1_trace_time.npy', file_mode) as f:
+    filename = './Weights/l1_trace_time.npy'
+    if testing_phase:
+        filename = './Weights/l1_trace_time_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l1_trace_value.npy', file_mode) as f:
+    filename = './Weights/l1_trace_value.npy'
+    if testing_phase:
+        filename = './Weights/l1_trace_value_test.npy'
+    with open(filename, file_mode) as f:
         for n1 in range(N1_Neurons):
             for weights in range(N0_Neurons):
                 state_plot  = S010state.apre[weights+(n1*N0_Neurons)][sample_time_index];
@@ -849,9 +909,15 @@ if(print_l2_traces and learning_2_phase and print_l2_state and use_l2):
     sample_time_index       = sample_time_index[0:-1:step];
     S120state_times_no_plot = S120state_times_no_plot[0:-1:step];
     time_plot               = S120state_times_no_plot/ms
-    with open('./Weights/l2_trace_time.npy', file_mode) as f:
+    filename = './Weights/l2_trace_time.npy'
+    if testing_phase:
+        filename = './Weights/l2_trace_time_test.npy'
+    with open(filename, file_mode) as f:
         np.save(f, time_plot)
-    with open('./Weights/l2_trace_value.npy', file_mode) as f:
+    filename = './Weights/l2_trace_value.npy'
+    if testing_phase:
+        filename = './Weights/l2_trace_value_test.npy'
+    with open(filename, file_mode) as f:
         for n2 in range(N2_Neurons):
             for weights in range(N1_Neurons):
                 state_plot  = S120state.apre[weights+(n2*N1_Neurons)][sample_time_index];
@@ -863,7 +929,11 @@ if(print_l2_traces and learning_2_phase and print_l2_state and use_l2):
                 np.save(f, state3_plot)
                 np.save(f, state4_plot)
 
-with open('./previous_state.npy', 'wb') as f:
+filename = './previous_state.npy'
+if testing_phase:
+    filename = './previous_state_test.npy'
+
+with open(filename, 'wb') as f:
     np.save(f, np.array(N1.v))
     np.save(f, np.array(N1.a))
     if use_l2:

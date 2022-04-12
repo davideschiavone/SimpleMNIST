@@ -8,21 +8,26 @@ import csv
 
 figpath = './figures/'
 
-json_file = open('sim_values.json')
-sim_json  = json.load(json_file)
-
 argc = len(sys.argv)
 
 if argc > 1:
-    xlim_start_idx = int(sys.argv[1])
+    filename = sys.argv[1]
+else:
+    filename = 'sim_values.json'
+
+json_file = open(filename)
+sim_json  = json.load(json_file)
+
+if argc > 2:
+    xlim_start_idx = int(sys.argv[2])
 else:
     xlim_start_idx = 0
 
 total_duration = 0
 plot_start_lst = [ ]
 
-if argc > 2:
-    xlim_end_idx = int(sys.argv[2])
+if argc > 3:
+    xlim_end_idx = int(sys.argv[3])
 else:
     xlim_end_idx = len(sim_json['simulations'])
 
@@ -68,7 +73,10 @@ if(print_neuron_l0):
     plt.title("Input Neuron Stream")
     plt.xlabel('Time (ms)')
     plt.ylabel('Neuron index')
-    with open('./Weights/l0_stream.npy', 'rb') as f:
+    filename = './Weights/l0_stream.npy'
+    if testing_phase:
+        filename = './Weights/l0_stream_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             n0_times   = np.load(f)
@@ -90,7 +98,10 @@ if(print_neuron_reward):
     plt.title("Reward Neuron Stream")
     plt.xlabel('Time (ms)')
     plt.ylabel('Neuron index')
-    with open('./Weights/lreward_stream.npy', 'rb') as f:
+    filename = './Weights/lreward_stream.npy'
+    if testing_phase:
+        filename = './Weights/lreward_stream_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             nr_times   = np.load(f)
@@ -116,7 +127,10 @@ if(print_neuron_l1):
         n1_times_list = []
         n1_indices_list = []
 
-    with open('./Weights/l1_stream.npy', 'rb') as f:
+    filename = './Weights/l1_stream.npy'
+    if testing_phase:
+        filename = './Weights/l1_stream_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             n1_times   = np.load(f)
@@ -146,7 +160,10 @@ if(print_neuron_l2):
     if(print_statistics):
         n2_times_list = []
         n2_indices_list = []
-    with open('./Weights/l2_stream.npy', 'rb') as f:
+    filename = './Weights/l2_stream.npy'
+    if testing_phase:
+        filename = './Weights/l2_stream_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             n2_times   = np.load(f)
@@ -172,7 +189,10 @@ if(print_statistics):
     plt.title("Classes")
     plt.xlabel('Time (ms)')
     plt.ylabel('Class')
-    with open('./y_values.npy', 'rb') as f:
+    filename = './y_values.npy'
+    if testing_phase:
+        filename = './y_values_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             y_values = np.load(f)
@@ -192,7 +212,10 @@ if(print_statistics):
 if(print_neuron_l1 and print_statistics):
     y_values_list = []
     total_samples = 0
-    with open('./y_values.npy', 'rb') as f:
+    filename = './y_values.npy'
+    if testing_phase:
+        filename = './y_values_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             y_values = np.load(f)
@@ -214,7 +237,11 @@ if(print_neuron_l1 and print_statistics):
                 'per_class_samples' : np.zeros(10)
             }
 
-    with open('./l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv', 'w', encoding='UTF8') as fcsv:
+    filename = './l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv'
+    if testing_phase:
+        filename = './l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.csv'
+
+    with open(filename, 'w', encoding='UTF8') as fcsv:
 
         writer = csv.writer(fcsv, delimiter=',')
 
@@ -225,11 +252,17 @@ if(print_neuron_l1 and print_statistics):
 
         writer.writerow(header)
 
-        with open('./l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.txt', 'w') as f:
+        filename = './l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.txt'
+        if testing_phase:
+            filename = './l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.txt'
+
+        with open(filename, 'w') as f:
 
 
             h1_vector = np.zeros((total_samples, N1_Neurons))
             labels    = np.zeros(total_samples)
+
+            print("total Samples " + str(total_samples))
 
             sim_step = 0
             for y_values in y_values_list:
@@ -310,7 +343,11 @@ if(print_neuron_l1 and print_statistics):
 if(print_neuron_l2 and print_statistics):
     stat_matrix = np.zeros((10, N2_Neurons));
     y_values_list = []
-    with open('./y_values.npy', 'rb') as f:
+
+    filename = './y_values.npy'
+    if testing_phase:
+        filename = './y_values_test.npy'
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             y_values = np.load(f)
@@ -359,7 +396,12 @@ if(print_l1_membrana and print_l1_state):
                 'times': [],
                 'neurons': {}
                 }
-    with open('./Weights/l1_membrana_time.npy', 'rb') as f:
+
+    filename = './Weights/l1_membrana_time.npy'
+    if testing_phase:
+        filename = './Weights/l1_membrana_time_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
         for sim in sim_json['simulations']:
@@ -368,7 +410,11 @@ if(print_l1_membrana and print_l1_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    with open('./Weights/l1_membrana_value.npy', 'rb') as f:
+    filename = './Weights/l1_membrana_value.npy'
+    if testing_phase:
+        filename = './Weights/l1_membrana_value_test.npy'
+
+    with open(filename, 'rb') as f:
         neurons_plots = {str(n1):[] for n1 in range(N1_Neurons)}
         i_count = 0
         for sim in sim_json['simulations']:
@@ -420,7 +466,12 @@ if(print_l2_membrana and print_l2_state):
                 'times': [],
                 'neurons': {}
                 }
-    with open('./Weights/l2_membrana_time.npy', 'rb') as f:
+
+    filename = './Weights/l2_membrana_value.npy'
+    if testing_phase:
+        filename = './Weights/l2_membrana_value_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
         for sim in sim_json['simulations']:
@@ -429,7 +480,11 @@ if(print_l2_membrana and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    with open('./Weights/l2_membrana_value.npy', 'rb') as f:
+    filename = './Weights/l2_membrana_value.npy'
+    if testing_phase:
+        filename = './Weights/l2_membrana_value_test.npy'
+
+    with open(filename, 'rb') as f:
         neurons_plots = {str(n2):[] for n2 in range(N2_Neurons)}
         i_count = 0
         for sim in sim_json['simulations']:
@@ -485,7 +540,12 @@ if(print_l2_weights and print_l2_state):
                 'times': [],
                 'weights': {}
                 }
-    with open('./Weights/l2_weights_time.npy', 'rb') as f:
+
+    filename = './Weights/l2_weights_time.npy'
+    if testing_phase:
+        filename = './Weights/l2_weights_time_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
         for sim in sim_json['simulations']:
@@ -494,7 +554,11 @@ if(print_l2_weights and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    with open('./Weights/l2_weights_value.npy', 'rb') as f:
+    filename = './Weights/l2_weights_time.npy'
+    if testing_phase:
+        filename = './Weights/l2_weights_time_test.npy'
+
+    with open(filename, 'rb') as f:
         weights_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         for sim in sim_json['simulations']:
             for n2 in range(N2_Neurons):
@@ -567,7 +631,12 @@ if(print_l1_weights and print_l1_state):
                 'times': [],
                 'weights': {}
                 }
-    with open('./Weights/l1_weights_time.npy', 'rb') as f:
+
+    filename = './Weights/l1_weights_time.npy'
+    if testing_phase:
+        filename = './Weights/l1_weights_time_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
         for sim in sim_json['simulations']:
@@ -576,7 +645,11 @@ if(print_l1_weights and print_l1_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    with open('./Weights/l1_weights_value.npy', 'rb') as f:
+    filename = './Weights/l1_weights_value.npy'
+    if testing_phase:
+        filename = './Weights/l1_weights_value_test.npy'
+
+    with open(filename, 'rb') as f:
         weights_plots = {str(n1)+":"+str(n0):[] for n1 in range(N1_Neurons) for n0 in range(N0_Neurons)}
         for sim in sim_json['simulations']:
             for n1 in range(N1_Neurons):
@@ -656,7 +729,12 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 'reward': {},
                 'punish': {}
                 }
-    with open('./Weights/l2_trace_time.npy', 'rb') as f:
+
+    filename = './Weights/l2_trace_time.npy'
+    if testing_phase:
+        filename = './Weights/l2_trace_time_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
         for sim in sim_json['simulations']:
@@ -665,7 +743,11 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    with open('./Weights/l2_trace_value.npy', 'rb') as f:
+    filename = './Weights/l2_trace_value.npy'
+    if testing_phase:
+        filename = './Weights/l2_trace_value_test.npy'
+
+    with open(filename, 'rb') as f:
         apre_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         apost_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
         reward_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
@@ -742,7 +824,12 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
         plt.close(1)
 
 if learning_1_phase:
-    with open('./Weights/l1_weights.npy', 'rb') as f:
+
+    filename = './Weights/l1_weights.npy'
+    if testing_phase:
+        filename = './Weights/l1_weights_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             weight_matrix = np.load(f)
@@ -761,7 +848,12 @@ if learning_1_phase:
             i_count+=1
 
 if learning_2_phase:
-    with open('./Weights/l2_weights.npy', 'rb') as f:
+
+    filename = './Weights/l2_weights.npy'
+    if testing_phase:
+        filename = './Weights/l2_weights_test.npy'
+
+    with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
             weight_matrix = np.load(f)
