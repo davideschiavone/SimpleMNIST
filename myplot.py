@@ -10,10 +10,12 @@ figpath = './figures/'
 
 argc = len(sys.argv)
 
-if argc > 1:
-    filename = sys.argv[1]
-else:
+testing_phase = sys.argv[1] == "testing";
+
+if not testing_phase:
     filename = 'sim_values.json'
+else:
+    filename = 'sim_values_test.json'
 
 json_file = open(filename)
 sim_json  = json.load(json_file)
@@ -50,7 +52,6 @@ N0_Neurons          = sim_json['parameters']['N0_Neurons']
 N1_Neurons          = sim_json['parameters']['N1_Neurons']
 N2_Neurons          = sim_json['parameters']['N2_Neurons']
 Reward_Neurons      = sim_json['parameters']['Reward_Neurons']
-testing_phase       = sim_json['parameters']['testing_phase']
 print_neuron_l0     = sim_json['parameters']['print_neuron_l0']
 print_l1_membrana   = sim_json['parameters']['print_l1_membrana']
 print_l1_weights    = sim_json['parameters']['print_l1_weights']
@@ -291,15 +292,25 @@ if(print_neuron_l1 and print_statistics):
                 sim_step = sim_step + 25*num_samples
                 i_count = i_count+1
 
-            h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
+            #h1_embedded = TSNE(n_components=2, init='random').fit_transform(h1_vector)
+            from sklearn import random_projection
+            from sklearn.random_projection import GaussianRandomProjection
+            from sklearn.random_projection import SparseRandomProjection
+            from sklearn.decomposition import PCA
+
+            #transformer = random_projection.GaussianRandomProjection(n_components = 2)
+            #h1_embedded = transformer.fit_transform(h1_vector)
+
+            pca = PCA(n_components=2)
+            h1_embedded = pca.fit_transform(h1_vector)
             k = np.array(h1_embedded)
 
             plt.figure(1)
             plt.scatter(k[:, 0], k[:, 1], c=labels, zorder=10, s=0.4)
             if not testing_phase:
-                plt.savefig(figpath + 'l1_tsne' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + 'l1_pca_proj' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath + 'l1_tsne_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + 'l1_pca_proj_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
             for y in range(10):
@@ -626,16 +637,13 @@ if(print_l2_weights and print_l2_state):
             plt.savefig(figpath_n2 + '/l2_weight_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
-if(print_l1_weights and print_l1_state):
+if(print_l1_weights and print_l1_state and learning_1_phase):
     analog_plots = {
                 'times': [],
                 'weights': {}
                 }
 
     filename = './Weights/l1_weights_time.npy'
-    if testing_phase:
-        filename = './Weights/l1_weights_time_test.npy'
-
     with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
@@ -646,9 +654,6 @@ if(print_l1_weights and print_l1_state):
                 i_count+=1
 
     filename = './Weights/l1_weights_value.npy'
-    if testing_phase:
-        filename = './Weights/l1_weights_value_test.npy'
-
     with open(filename, 'rb') as f:
         weights_plots = {str(n1)+":"+str(n0):[] for n1 in range(N1_Neurons) for n0 in range(N0_Neurons)}
         for sim in sim_json['simulations']:

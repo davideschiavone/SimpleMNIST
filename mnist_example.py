@@ -5,11 +5,23 @@ import sys
 import json
 from decimal import Decimal
 from datasetsequence import DataSetSequence
+import os
 
 np.set_printoptions(formatter={'float': lambda x: "{0:0.1f}".format(x)})
 
-f_param = open('parameter.json')
- 
+testing_phase = sys.argv[1] == "testing";
+
+if not os.path.exists('./figures'):
+    os.makedirs('./figures')
+
+if not os.path.exists('./Weights'):
+    os.makedirs('./Weights')
+
+if not testing_phase:
+    f_param = open('parameter.json')
+else:
+    f_param = open('parameter_test.json')
+
 # returns JSON object as
 # a dictionary
 parameter = json.load(f_param)
@@ -74,13 +86,13 @@ start_scope()
 
 np.random.seed(2021)
 
-batch_number       = int(sys.argv[1])
-previous_state     = sys.argv[2] == "true"
+batch_number       = int(sys.argv[2])
+previous_state     = sys.argv[3] == "true"
 print("Using previous state: " + str(previous_state))
 dss_train = DataSetSequence(None, None, 256,'Batches/train', False)
 dss_test  = DataSetSequence(None, None, 256,'Batches/test', False)
 
-testing_phase      = parameter['testing_phase']
+
 
 if not testing_phase:
     (train_X, train_y) = dss_train.getItem(batch_number)
@@ -89,10 +101,7 @@ else:
     (test_X, test_y)   = dss_test.getItem(batch_number)
     (train_X, train_y) = dss_train.getItem(0)
 
-print(train_y[0:10])
-
 classes       = np.arange(0,10)
-classes_color = ['y', 'k', 'b', 'r', 'g', 'c', 'm','k', 'b', 'r' ]
 classes_sizes = np.arange(0,10)
 
 for i in classes:
@@ -126,11 +135,14 @@ N2_Neurons         = parameter['N2_Neurons']
 Reward_Neurons     = int(2*N2_Neurons);
 
 first_example      = parameter['first_example']
-training_example   = X_Train_Samples if parameter['training_example']==-1 else parameter['training_example'];
 
 monitor_step       = parameter['monitor_step']
 plot_step_time     = parameter['plot_step_time']
-testing_example    = X_Test_Samples if parameter['testing_example']==-1 else parameter['testing_example'];
+
+if not testing_phase:
+    number_examples    = X_Train_Samples if parameter['number_example']==-1 else parameter['number_example'];
+else:
+    number_examples    = X_Test_Samples if parameter['number_example']==-1 else parameter['number_example'];
 
 learning_1_phase   = parameter['learning_1_phase']
 learning_2_phase   = parameter['learning_2_phase']
@@ -155,16 +167,12 @@ print_neuron_reward = parameter['print_neuron_reward'];
 
 use_l2              = parameter['use_l2']
 
-if not testing_phase:
-    set_size       = training_example
-else:
-    set_size       = testing_example
+plot_start_time    = parameter['plot_start_time'] if parameter['plot_start_time']>=0 else (number_examples+parameter['plot_start_time'])
 
-plot_start_time    = parameter['plot_start_time'] if parameter['plot_start_time']>=0 else (set_size+parameter['plot_start_time'])
 if parameter['plot_duration_time'] < 0:
-    plot_duration_time = set_size
-elif parameter['plot_duration_time'] > set_size:
-    plot_duration_time = set_size
+    plot_duration_time = number_examples
+elif parameter['plot_duration_time'] > number_examples:
+    plot_duration_time = number_examples
 else:
     plot_duration_time = parameter['plot_duration_time']
 
@@ -181,7 +189,7 @@ single_example_time   = 25
 
 
 print('Start simulation with : ')
-print("training_example= " + str(training_example))
+print("number_examples = " + str(number_examples ))
 print("monitor_step (ms)= " + str(monitor_step))
 print("plot_start_time(ms)= " + str(plot_start_time))
 print("plot_duration_time(ms)= " + str(plot_duration_time))
@@ -359,7 +367,7 @@ elif learning_1_phase and previous_state:
         weight_matrix = S010w
 else:
     weight_matrix = np.zeros((N1_Neurons,N0_Neurons))
-    with open('./Weights/l1_weights.npy', 'rb') as f:
+    with open('./Weights/l1_weights_trained.npy', 'rb') as f:
         weight_matrix = np.load(f)
 
 if learning_2_phase and previous_state == False and use_l2:
@@ -370,7 +378,7 @@ elif learning_2_phase and previous_state and use_l2:
         weight_matrix2 = S120w
 elif use_l2:
     weight_matrix2 = np.zeros((N2_Neurons,N1_Neurons))
-    with open('./Weights/l2_weights.npy', 'rb') as f:
+    with open('./Weights/l2_weights_trained.npy', 'rb') as f:
         weight_matrix2 = np.load(f)
 
 
@@ -542,11 +550,11 @@ if use_l2:
 start_mon = plot_start_time*single_example_time
 
 if not testing_phase:
-    my_set_X_flat  = train_X_flat[first_example:set_size];
-    print("Network created.... Start training it with " + str(set_size) + " samples")
+    my_set_X_flat  = train_X_flat[first_example:number_examples];
+    print("Network created.... Start training it with " + str(number_examples) + " samples")
 else:
-    my_set_X_flat  = test_X_flat[first_example:set_size];
-    print("Network created.... Start testing it with " + str(set_size) + " samples")
+    my_set_X_flat  = test_X_flat[first_example:number_examples];
+    print("Network created.... Start testing it with " + str(number_examples) + " samples")
 
 sim_dict = {
             'plot_start' : plot_start_time*single_example_time,
@@ -560,7 +568,6 @@ parameters = {
             'N1_Neurons' : N1_Neurons,
             'N2_Neurons' : N2_Neurons,
             'Reward_Neurons' : Reward_Neurons,
-            'testing_phase' : testing_phase,
             'print_neuron_l0' : print_neuron_l0,
             'print_l1_membrana' : print_l1_membrana,
             'print_l1_weights' : print_l1_weights,
@@ -714,7 +721,7 @@ if(print_l2_traces or print_l2_weights and use_l2):
         S120state   = StateMonitor(S120, ['w'], record=np.arange(N1_Neurons*N2_Neurons), dt=monitor_step*ms)
     net.add(S120state)
 
-net.run((set_size*single_example_time + 1)*ms)
+net.run((number_examples*single_example_time + 1)*ms)
 
 if not testing_phase:
     print("Network trained....")
@@ -770,10 +777,10 @@ if(print_statistics):
         filename = './y_values_test.npy'
     with open(filename, file_mode) as f:
         if not testing_phase:
-            my_set_y_flat  = train_y[first_example:set_size];
+            my_set_y_flat  = train_y[first_example:number_examples];
         else:
-            my_set_y_flat  = test_y[first_example:set_size];
-            print(test_y[first_example:set_size])
+            my_set_y_flat  = test_y[first_example:number_examples];
+            print(test_y[first_example:number_examples])
         np.save(f, my_set_y_flat)
 
 
@@ -822,11 +829,13 @@ if(print_l2_membrana and print_l2_state and use_l2):
 if(print_l1_weights):
     if learning_1_phase:
         filename = './Weights/l1_weights.npy'
-        if testing_phase:
-            filename = './Weights/l1_weights_test.npy'
+        weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
+        weight_matrix = np.reshape(weight_matrix,(N1_Neurons,N0_Neurons))
+        #here we append the weights for debug
         with open(filename, file_mode) as f:
-            weight_matrix = S010.w.get_item(item=np.arange(N0_Neurons*N1_Neurons))
-            weight_matrix = np.reshape(weight_matrix,(N1_Neurons,N0_Neurons))
+            np.save(f, weight_matrix)
+        #here we store weights so that we have them ready
+        with open('./Weights/l1_weights_trained.npy', 'wb') as f:
             np.save(f, weight_matrix)
         if(print_l1_state):
             sample_time_condition    = (S010state.t/ms < end_plot*single_example_time) & (S010state.t/ms >= plot_start_time*single_example_time)
@@ -836,13 +845,9 @@ if(print_l1_weights):
             S010state_times_no_plot  = S010state_times_no_plot[0:-1:step];
             time_plot                = S010state_times_no_plot/ms
             filename = './Weights/l1_weights_time.npy'
-            if testing_phase:
-                filename = './Weights/l1_weights_time_test.npy'
             with open(filename, file_mode) as f:
                 np.save(f, time_plot)
             filename = './Weights/l1_weights_value.npy'
-            if testing_phase:
-                filename = './Weights/l1_weights_value_test.npy'
             with open(filename, file_mode) as f:
                 for n1 in range(N1_Neurons):
                     for weights in range(N0_Neurons):
@@ -852,8 +857,6 @@ if(print_l1_weights):
 if(print_l2_weights and use_l2):
     if learning_2_phase:
         filename = './Weights/l2_weights.npy'
-        if testing_phase:
-            filename = './Weights/l2_weights_test.npy'
         with open(filename, file_mode) as f:
             weight_matrix = S120.w.get_item(item=np.arange(N1_Neurons*N2_Neurons))
             weight_matrix = np.reshape(weight_matrix,(N2_Neurons,N1_Neurons))
@@ -866,13 +869,9 @@ if(print_l2_weights and use_l2):
             S120state_times_no_plot  = S120state_times_no_plot[0:-1:step];
             time_plot                = S120state_times_no_plot/ms
             filename = './Weights/l2_weights_time.npy'
-            if testing_phase:
-                filename = './Weights/l2_weights_time_test.npy'
             with open(filename, file_mode) as f:
                 np.save(f, time_plot)
             filename = './Weights/l2_weights_value.npy'
-            if testing_phase:
-                filename = './Weights/l2_weights_value_test.npy'
             with open(filename, file_mode) as f:
                 for n2 in range(N2_Neurons):
                     for weights in range(N1_Neurons):
