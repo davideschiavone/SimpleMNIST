@@ -370,7 +370,16 @@ if learning_1_phase:
 minDelay   = 0*ms
 maxDelay   = 4*ms
 deltaDelay = maxDelay - minDelay
-S010.delay = 'minDelay + rand() * deltaDelay'
+
+if learning_1_phase and previous_state == False:
+    S010.delay = 'minDelay + rand() * deltaDelay'
+else:
+    S010d = np.zeros(N1_Neurons*N0_Neurons)
+    with open(weightpath + '/l1_delays.npy', 'rb') as f:
+        S010d = np.load(f)
+    S010.delay = S010d
+
+
 
 
 if learning_1_phase and previous_state == False:
@@ -946,6 +955,10 @@ if(print_l2_traces and learning_2_phase and print_l2_state and use_l2):
                 np.save(f, state2_plot)
                 np.save(f, state3_plot)
                 np.save(f, state4_plot)
+
+
+with open(weightpath + '/l1_delays.npy', 'wb') as f:
+    np.save(f, np.array(S010.delay))
 
 
 filename = main_folder + '/previous_state.npy'
