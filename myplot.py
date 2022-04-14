@@ -6,30 +6,38 @@ import json
 import os
 import csv
 
-figpath = './figures/'
+
+
+main_folder = sys.argv[1];
+
+figpath = main_folder + '/figures'
+weightpath = main_folder + '/Weights'
+
+if not os.path.exists(figpath):
+    os.makedirs(figpath)
 
 argc = len(sys.argv)
 
-testing_phase = sys.argv[1] == "testing";
+testing_phase = sys.argv[2] == "testing";
 
 if not testing_phase:
-    filename = 'sim_values.json'
+    filename = main_folder + '/sim_values.json'
 else:
-    filename = 'sim_values_test.json'
+    filename = main_folder + '/sim_values_test.json'
 
 json_file = open(filename)
 sim_json  = json.load(json_file)
 
-if argc > 2:
-    xlim_start_idx = int(sys.argv[2])
+if argc > 3:
+    xlim_start_idx = int(sys.argv[3])
 else:
     xlim_start_idx = 0
 
 total_duration = 0
 plot_start_lst = [ ]
 
-if argc > 3:
-    xlim_end_idx = int(sys.argv[3])
+if argc > 4:
+    xlim_end_idx = int(sys.argv[4])
 else:
     xlim_end_idx = len(sim_json['simulations'])
 
@@ -74,9 +82,9 @@ if(print_neuron_l0):
     plt.title("Input Neuron Stream")
     plt.xlabel('Time (ms)')
     plt.ylabel('Neuron index')
-    filename = './Weights/l0_stream.npy'
+    filename = weightpath + '/l0_stream.npy'
     if testing_phase:
-        filename = './Weights/l0_stream_test.npy'
+        filename = weightpath + '/l0_stream_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -89,9 +97,9 @@ if(print_neuron_l0):
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,N0_Neurons))
     if not testing_phase:
-        plt.savefig(figpath + 'l0_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '//l0_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l0_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '//l0_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_reward):
@@ -99,9 +107,9 @@ if(print_neuron_reward):
     plt.title("Reward Neuron Stream")
     plt.xlabel('Time (ms)')
     plt.ylabel('Neuron index')
-    filename = './Weights/lreward_stream.npy'
+    filename = weightpath + '/lreward_stream.npy'
     if testing_phase:
-        filename = './Weights/lreward_stream_test.npy'
+        filename = weightpath + '/lreward_stream_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -115,7 +123,7 @@ if(print_neuron_reward):
     plt.xlim((xlim_start, xlim_end))
     plt.ylim((-0.5,Reward_Neurons))
     if not testing_phase:
-        plt.savefig(figpath + 'lreward_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/lreward_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_l1):
@@ -128,9 +136,9 @@ if(print_neuron_l1):
         n1_times_list = []
         n1_indices_list = []
 
-    filename = './Weights/l1_stream.npy'
+    filename = weightpath + '/l1_stream.npy'
     if testing_phase:
-        filename = './Weights/l1_stream_test.npy'
+        filename = weightpath + '/l1_stream_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -147,9 +155,9 @@ if(print_neuron_l1):
     plt.ylim((-0.5,N1_Neurons))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'l1_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l1_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l1_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l1_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 
@@ -161,9 +169,9 @@ if(print_neuron_l2):
     if(print_statistics):
         n2_times_list = []
         n2_indices_list = []
-    filename = './Weights/l2_stream.npy'
+    filename = weightpath + '/l2_stream.npy'
     if testing_phase:
-        filename = './Weights/l2_stream_test.npy'
+        filename = weightpath + '/l2_stream_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -179,9 +187,9 @@ if(print_neuron_l2):
     plt.ylim((-0.5,N2_Neurons))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'l2_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l2_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l2_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l2_stream_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 
@@ -190,9 +198,9 @@ if(print_statistics):
     plt.title("Classes")
     plt.xlabel('Time (ms)')
     plt.ylabel('Class')
-    filename = './y_values.npy'
+    filename =  main_folder + '/y_values.npy'
     if testing_phase:
-        filename = './y_values_test.npy'
+        filename =  main_folder + '/y_values_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -205,17 +213,17 @@ if(print_statistics):
     plt.ylim((-0.5, 10))
     plt.xlim((xlim_start, xlim_end))
     if not testing_phase:
-        plt.savefig(figpath + 'classes' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/classes' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'classes_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/classes_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_neuron_l1 and print_statistics):
     y_values_list = []
     total_samples = 0
-    filename = './y_values.npy'
+    filename =  main_folder + '/y_values.npy'
     if testing_phase:
-        filename = './y_values_test.npy'
+        filename =  main_folder + '/y_values_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -238,9 +246,9 @@ if(print_neuron_l1 and print_statistics):
                 'per_class_samples' : np.zeros(10)
             }
 
-    filename = './l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv'
+    filename = main_folder + '/l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.csv'
     if testing_phase:
-        filename = './l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.csv'
+        filename = main_folder + '/l1_firing_csv' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.csv'
 
     with open(filename, 'w', encoding='UTF8') as fcsv:
 
@@ -253,9 +261,9 @@ if(print_neuron_l1 and print_statistics):
 
         writer.writerow(header)
 
-        filename = './l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.txt'
+        filename = main_folder + '/l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.txt'
         if testing_phase:
-            filename = './l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.txt'
+            filename = main_folder + '/l1_firing' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '_test.txt'
 
         with open(filename, 'w') as f:
 
@@ -308,9 +316,9 @@ if(print_neuron_l1 and print_statistics):
             plt.figure(1)
             plt.scatter(k[:, 0], k[:, 1], c=labels, zorder=10, s=0.4)
             if not testing_phase:
-                plt.savefig(figpath + 'l1_pca_proj' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + '/l1_pca_proj' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath + 'l1_pca_proj_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + '/l1_pca_proj_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
             for y in range(10):
@@ -346,18 +354,18 @@ if(print_neuron_l1 and print_statistics):
         plt.xlim((0, N1_Neurons))
 
         if not testing_phase:
-            plt.savefig(figpath + 'l1_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            plt.savefig(figpath + '/l1_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath + 'l1_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            plt.savefig(figpath + '/l1_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if(print_neuron_l2 and print_statistics):
     stat_matrix = np.zeros((10, N2_Neurons));
     y_values_list = []
 
-    filename = './y_values.npy'
+    filename =  main_folder + '/y_values.npy'
     if testing_phase:
-        filename = './y_values_test.npy'
+        filename =  main_folder + '/y_values_test.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         for sim in sim_json['simulations']:
@@ -397,9 +405,9 @@ if(print_neuron_l2 and print_statistics):
     plt.xlim((0, N2_Neurons))
 
     if not testing_phase:
-        plt.savefig(figpath + 'l2_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l2_statistics' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
-        plt.savefig(figpath + 'l2_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+        plt.savefig(figpath + '/l2_statistics_test' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     plt.close(1)
 
 if(print_l1_membrana and print_l1_state):
@@ -408,9 +416,9 @@ if(print_l1_membrana and print_l1_state):
                 'neurons': {}
                 }
 
-    filename = './Weights/l1_membrana_time.npy'
+    filename = weightpath + '/l1_membrana_time.npy'
     if testing_phase:
-        filename = './Weights/l1_membrana_time_test.npy'
+        filename = weightpath + '/l1_membrana_time_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -421,9 +429,9 @@ if(print_l1_membrana and print_l1_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    filename = './Weights/l1_membrana_value.npy'
+    filename = weightpath + '/l1_membrana_value.npy'
     if testing_phase:
-        filename = './Weights/l1_membrana_value_test.npy'
+        filename = weightpath + '/l1_membrana_value_test.npy'
 
     with open(filename, 'rb') as f:
         neurons_plots = {str(n1):[] for n1 in range(N1_Neurons)}
@@ -460,16 +468,16 @@ if(print_l1_membrana and print_l1_state):
         if (n1 % 4 == 3):
             stop_counter = 0
             if not testing_phase:
-                plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + '/l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             else:
-                plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+                plt.savefig(figpath + '/l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
             plt.close(1)
 
     if (stop_counter):
         if not testing_phase:
-            plt.savefig(figpath + 'l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            plt.savefig(figpath + '/l1_membrana_value' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         else:
-            plt.savefig(figpath + 'l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
+            plt.savefig(figpath + '/l1_membrana_value_test' + str(fig_counter-1) + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
         plt.close(1)
 
 if(print_l2_membrana and print_l2_state):
@@ -478,9 +486,9 @@ if(print_l2_membrana and print_l2_state):
                 'neurons': {}
                 }
 
-    filename = './Weights/l2_membrana_value.npy'
+    filename = weightpath + '/l2_membrana_value.npy'
     if testing_phase:
-        filename = './Weights/l2_membrana_value_test.npy'
+        filename = weightpath + '/l2_membrana_value_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -491,9 +499,9 @@ if(print_l2_membrana and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    filename = './Weights/l2_membrana_value.npy'
+    filename = weightpath + '/l2_membrana_value.npy'
     if testing_phase:
-        filename = './Weights/l2_membrana_value_test.npy'
+        filename = weightpath + '/l2_membrana_value_test.npy'
 
     with open(filename, 'rb') as f:
         neurons_plots = {str(n2):[] for n2 in range(N2_Neurons)}
@@ -510,7 +518,7 @@ if(print_l2_membrana and print_l2_state):
     stop_counter = 0
     for n2 in range(N2_Neurons):
 
-        figpath_n2 = figpath + 'membrana_l2'
+        figpath_n2 = figpath + '/membrana_l2'
         if not os.path.exists(figpath_n2):
             os.makedirs(figpath_n2)
 
@@ -552,9 +560,9 @@ if(print_l2_weights and print_l2_state):
                 'weights': {}
                 }
 
-    filename = './Weights/l2_weights_time.npy'
+    filename = weightpath + '/l2_weights_time.npy'
     if testing_phase:
-        filename = './Weights/l2_weights_time_test.npy'
+        filename = weightpath + '/l2_weights_time_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -565,9 +573,9 @@ if(print_l2_weights and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    filename = './Weights/l2_weights_time.npy'
+    filename = weightpath + '/l2_weights_time.npy'
     if testing_phase:
-        filename = './Weights/l2_weights_time_test.npy'
+        filename = weightpath + '/l2_weights_time_test.npy'
 
     with open(filename, 'rb') as f:
         weights_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
@@ -584,7 +592,7 @@ if(print_l2_weights and print_l2_state):
     stop_counter = 0
 
     for n2 in range(N2_Neurons):
-        figpath_n2 = figpath + 'weights_l2/n' + str(n2)
+        figpath_n2 = figpath + '/weights_l2/n' + str(n2)
         if not os.path.exists(figpath_n2):
             os.makedirs(figpath_n2)
 
@@ -643,7 +651,7 @@ if(print_l1_weights and print_l1_state and learning_1_phase):
                 'weights': {}
                 }
 
-    filename = './Weights/l1_weights_time.npy'
+    filename = weightpath + '/l1_weights_time.npy'
     with open(filename, 'rb') as f:
         i_count = 0
         time_plot_lst = []
@@ -653,7 +661,7 @@ if(print_l1_weights and print_l1_state and learning_1_phase):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    filename = './Weights/l1_weights_value.npy'
+    filename = weightpath + '/l1_weights_value.npy'
     with open(filename, 'rb') as f:
         weights_plots = {str(n1)+":"+str(n0):[] for n1 in range(N1_Neurons) for n0 in range(N0_Neurons)}
         for sim in sim_json['simulations']:
@@ -671,7 +679,7 @@ if(print_l1_weights and print_l1_state and learning_1_phase):
         stop_counter = 0
 
         for n1 in range(N1_Neurons):
-            figpath_n1 = figpath + 'weights_l1/n' + str(n1)
+            figpath_n1 = figpath + '/weights_l1/n' + str(n1)
             if not os.path.exists(figpath_n1):
                 os.makedirs(figpath_n1)
             print("priting l1 weights of neuron " + str(n1))
@@ -735,9 +743,9 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 'punish': {}
                 }
 
-    filename = './Weights/l2_trace_time.npy'
+    filename = weightpath + '/l2_trace_time.npy'
     if testing_phase:
-        filename = './Weights/l2_trace_time_test.npy'
+        filename = weightpath + '/l2_trace_time_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -748,9 +756,9 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 analog_plots['times'].append(time_plot + plot_start_lst[i_count])
                 i_count+=1
 
-    filename = './Weights/l2_trace_value.npy'
+    filename = weightpath + '/l2_trace_value.npy'
     if testing_phase:
-        filename = './Weights/l2_trace_value_test.npy'
+        filename = weightpath + '/l2_trace_value_test.npy'
 
     with open(filename, 'rb') as f:
         apre_plots = {str(n2)+":"+str(n1):[] for n2 in range(N2_Neurons) for n1 in range(N1_Neurons)}
@@ -785,7 +793,7 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
 
     for n2 in range(N2_Neurons):
 
-        figpath_n2 = figpath + 'traces_l2/n' + str(n2)
+        figpath_n2 = figpath + '/traces_l2/n' + str(n2)
         if not os.path.exists(figpath_n2):
             os.makedirs(figpath_n2)
 
@@ -830,9 +838,9 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
 
 if learning_1_phase:
 
-    filename = './Weights/l1_weights.npy'
+    filename = weightpath + '/l1_weights.npy'
     if testing_phase:
-        filename = './Weights/l1_weights_test.npy'
+        filename = weightpath + '/l1_weights_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -841,7 +849,7 @@ if learning_1_phase:
             if sim in plot_simulations:
                 max_w = weight_matrix.max()
                 for n1 in range(N1_Neurons):
-                    figpath_n1 = figpath + 'weights_l1/n' + str(n1)
+                    figpath_n1 = figpath + '/weights_l1/n' + str(n1)
                     if not os.path.exists(figpath_n1):
                         os.makedirs(figpath_n1)
                     plt.figure(1)
@@ -854,9 +862,9 @@ if learning_1_phase:
 
 if learning_2_phase:
 
-    filename = './Weights/l2_weights.npy'
+    filename = weightpath + '/l2_weights.npy'
     if testing_phase:
-        filename = './Weights/l2_weights_test.npy'
+        filename = weightpath + '/l2_weights_test.npy'
 
     with open(filename, 'rb') as f:
         i_count = 0
@@ -865,7 +873,7 @@ if learning_2_phase:
             if sim in plot_simulations:
                 max_w = weight_matrix.max()
                 for n2 in range(N2_Neurons):
-                    figpath_n2 = figpath + 'weights_l2/n' + str(n2)
+                    figpath_n2 = figpath + '/weights_l2/n' + str(n2)
                     if not os.path.exists(figpath_n2):
                         os.makedirs(figpath_n2)
                     plt.figure(1)
