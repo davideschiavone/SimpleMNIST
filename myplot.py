@@ -56,6 +56,14 @@ for sim in sim_json['simulations']:
 
 xlim_end   = xlim_start + total_duration
 
+if argc > 6:
+    plt_xlim_start = int(sys.argv[5])
+    plt_xlim_end   = int(sys.argv[6])
+else:
+    plt_xlim_start = xlim_start
+    plt_xlim_end   = xlim_end
+
+
 N0_Neurons          = sim_json['parameters']['N0_Neurons']
 N1_Neurons          = sim_json['parameters']['N1_Neurons']
 N2_Neurons          = sim_json['parameters']['N2_Neurons']
@@ -94,7 +102,7 @@ if(print_neuron_l0):
                 n0_times   = n0_times*1000 + plot_start_lst[i_count]
                 plt.plot(n0_times, n0_indices, '.k')
                 i_count+=1
-    plt.xlim((xlim_start, xlim_end))
+    plt.xlim((plt_xlim_start, plt_xlim_end))
     plt.ylim((-0.5,N0_Neurons))
     if not testing_phase:
         plt.savefig(figpath + '//l0_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
@@ -120,7 +128,7 @@ if(print_neuron_reward):
                 plt.plot(nr_times, nr_indices, '*r')
                 i_count+=1
 
-    plt.xlim((xlim_start, xlim_end))
+    plt.xlim((plt_xlim_start, plt_xlim_end))
     plt.ylim((-0.5,Reward_Neurons))
     if not testing_phase:
         plt.savefig(figpath + '/lreward_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
@@ -153,7 +161,7 @@ if(print_neuron_l1):
                 i_count+=1
 
     plt.ylim((-0.5,N1_Neurons))
-    plt.xlim((xlim_start, xlim_end))
+    plt.xlim((plt_xlim_start, plt_xlim_end))
     if not testing_phase:
         plt.savefig(figpath + '/l1_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
@@ -185,7 +193,7 @@ if(print_neuron_l2):
                     n2_indices_list.append(n2_indices)
                 i_count+=1
     plt.ylim((-0.5,N2_Neurons))
-    plt.xlim((xlim_start, xlim_end))
+    plt.xlim((plt_xlim_start, plt_xlim_end))
     if not testing_phase:
         plt.savefig(figpath + '/l2_stream' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
@@ -211,7 +219,7 @@ if(print_statistics):
                 i_count+=1
 
     plt.ylim((-0.5, 10))
-    plt.xlim((xlim_start, xlim_end))
+    plt.xlim((plt_xlim_start, plt_xlim_end))
     if not testing_phase:
         plt.savefig(figpath + '/classes' + '_' + str(xlim_start_idx) + '_' + str(xlim_end_idx) + '.png')
     else:
@@ -294,7 +302,7 @@ if(print_neuron_l1 and print_statistics):
                     labels[samples]    = class_sample
                     csvdata = [class_sample]
                     for h in h1_vector[samples]:
-                        csvdata.append(h)
+                        csvdata.append(int(h))
                     writer.writerow(csvdata)
 
                 sim_step = sim_step + 25*num_samples
@@ -306,11 +314,11 @@ if(print_neuron_l1 and print_statistics):
             from sklearn.random_projection import SparseRandomProjection
             from sklearn.decomposition import PCA
 
-            #transformer = random_projection.GaussianRandomProjection(n_components = 2)
-            #h1_embedded = transformer.fit_transform(h1_vector)
+            transformer = random_projection.SparseRandomProjection(n_components = 2)
+            h1_embedded = transformer.fit_transform(h1_vector)
 
-            pca = PCA(n_components=2)
-            h1_embedded = pca.fit_transform(h1_vector)
+            #pca = PCA(n_components=2)
+            #h1_embedded = pca.fit_transform(h1_vector)
             k = np.array(h1_embedded)
 
             plt.figure(1)
@@ -455,7 +463,7 @@ if(print_l1_membrana and print_l1_state):
 
         ax1 = plt.subplot2grid((4,1), (n1 % 4,0))
         ax1.set_title("neuron " + str(n1))
-        plt.xlim((xlim_start, xlim_end))
+        plt.xlim((plt_xlim_start, plt_xlim_end))
         plt.ylim((-0.22, 0.12))
         plt.grid(True)
 
@@ -529,7 +537,7 @@ if(print_l2_membrana and print_l2_state):
 
         ax1 = plt.subplot2grid((5,1), (n2 % 5,0))
         ax1.set_title("neuron " + str(n2))
-        plt.xlim((xlim_start, xlim_end))
+        plt.xlim((plt_xlim_start, plt_xlim_end))
         plt.ylim((-0.22, 0.12))
         plt.grid(True)
 
@@ -618,7 +626,7 @@ if(print_l2_weights and print_l2_state):
                 plt.plot(time_plot, state_plot)
                 i_count+=1
 
-            plt.xlim((xlim_start, xlim_end))
+            plt.xlim((plt_xlim_start, plt_xlim_end))
             plt.ylim((min_w*0.9, max_w*1.1))
             plt.grid(True)
 
@@ -706,7 +714,7 @@ if(print_l1_weights and print_l1_state and learning_1_phase):
 
                     i_count+=1
 
-                plt.xlim((xlim_start, xlim_end))
+                plt.xlim((plt_xlim_start, plt_xlim_end))
                 plt.ylim((min_w*0.9, max_w*1.1))
                 plt.grid(True)
 
@@ -817,7 +825,7 @@ if(print_l2_traces and learning_2_phase and print_l2_state):
                 plt.plot(time_plot, state_plot,'b')
                 i_count+=1
 
-            plt.xlim((xlim_start, xlim_end))
+            plt.xlim((plt_xlim_start, plt_xlim_end))
             plt.ylim((-0.0004, +0.0004))
             plt.grid(True)
 
