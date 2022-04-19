@@ -163,6 +163,7 @@ learning_2_phase   = parameter['learning_2_phase']
 print_neuron_l0     = parameter['print_neuron_l0'];
 
 print_l1_membrana   = parameter['print_l1_membrana'];
+print_l1_threshold  = parameter['print_l1_threshold'];
 print_l1_weights    = parameter['print_l1_weights'];
 print_l1_traces     = parameter['print_l1_traces'];
 print_l1_state      = parameter['print_l1_state'];
@@ -290,13 +291,13 @@ sumwl1 : 1
 eqs_reset = '''
                 v = V_resetl1
                 a = A_resetl1
-                dynThreshold = dynThreshold+Thresholdl1*0.5
+                dynThreshold = dynThreshold+Thresholdl1*0.10
             '''
 
 tauprel1  = 7 * ms
 taupostl1 = 7 * ms
 
-Thresholdl1 = 0.052
+Thresholdl1 = 0.005
 V_resetl1   = -0.1
 A_resetl1   = +0.1
 
@@ -593,6 +594,7 @@ parameters = {
             'Reward_Neurons' : Reward_Neurons,
             'print_neuron_l0' : print_neuron_l0,
             'print_l1_membrana' : print_l1_membrana,
+            'print_l1_threshold' : print_l1_threshold,
             'print_l1_weights' : print_l1_weights,
             'print_l1_traces' : print_l1_traces,
             'print_l1_state' : print_l1_state,
@@ -726,6 +728,10 @@ if(print_l1_membrana and print_l1_state):
     N1state  = StateMonitor(N1, ['v'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
     net.add(N1state)
 
+if(print_l1_membrana and print_l1_threshold and print_l1_state):
+    N1state_th  = StateMonitor(N1, ['dynThreshold'], record=np.arange(N1_Neurons), dt=monitor_step*ms)
+    net.add(N1state_th)
+
 if(print_l2_membrana and print_l2_state and use_l2):
     N2state  = StateMonitor(N2, ['v'], record=np.arange(N2_Neurons), dt=monitor_step*ms)
     net.add(N2state)
@@ -832,6 +838,26 @@ if(print_l1_membrana and print_l1_state):
     with open(filename, file_mode) as f:
         for n1 in range(N1_Neurons):
             state_plot = N1state.v[n1][sample_time_index]
+            np.save(f, state_plot)
+
+if(print_l1_membrana and print_l1_threshold and print_l1_state):
+    sample_time_condition    = (N1state_th.t/ms < end_plot*single_example_time) & (N1state_th.t/ms >= plot_start_time*single_example_time)
+    sample_time_index        = np.where(sample_time_condition)[0]
+    N1state_th_times_no_plot = N1state_th.t[sample_time_condition]
+    sample_time_index        = sample_time_index[0:-1:step];
+    N1state_th_times_no_plot = N1state_th_times_no_plot[0:-1:step];
+    time_plot                = N1state_th_times_no_plot/ms
+    filename = weightpath + '/l1_membrana_threshold_time.npy'
+    if testing_phase:
+        filename = weightpath + '/l1_membrana_threshold_time_test.npy'
+    with open(filename, file_mode) as f:
+        np.save(f, time_plot)
+    filename = weightpath + '/l1_membrana_threshold_value.npy'
+    if testing_phase:
+        filename = weightpath + '/l1_membrana_threshold_value_test.npy'
+    with open(filename, file_mode) as f:
+        for n1 in range(N1_Neurons):
+            state_plot = N1state_th.dynThreshold[n1][sample_time_index]
             np.save(f, state_plot)
 
 if(print_l2_membrana and print_l2_state and use_l2):

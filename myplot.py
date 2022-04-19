@@ -70,6 +70,7 @@ N2_Neurons          = sim_json['parameters']['N2_Neurons']
 Reward_Neurons      = sim_json['parameters']['Reward_Neurons']
 print_neuron_l0     = sim_json['parameters']['print_neuron_l0']
 print_l1_membrana   = sim_json['parameters']['print_l1_membrana']
+print_l1_threshold  = sim_json['parameters']['print_l1_threshold']
 print_l1_weights    = sim_json['parameters']['print_l1_weights']
 print_l1_traces     = sim_json['parameters']['print_l1_traces']
 print_l1_state      = sim_json['parameters']['print_l1_state']
@@ -424,6 +425,11 @@ if(print_l1_membrana and print_l1_state):
                 'neurons': {}
                 }
 
+    if(print_l1_threshold):
+        analog2_plots = {
+                'neurons': {}
+                }
+
     filename = weightpath + '/l1_membrana_time.npy'
     if testing_phase:
         filename = weightpath + '/l1_membrana_time_test.npy'
@@ -453,6 +459,24 @@ if(print_l1_membrana and print_l1_state):
 
         analog_plots['neurons'] = neurons_plots
 
+    if(print_l1_threshold):
+        filename = weightpath + '/l1_membrana_threshold_value.npy'
+        if testing_phase:
+            filename = weightpath + '/l1_membrana_threshold_value_test.npy'
+
+        with open(filename, 'rb') as f:
+            neurons2_plots = {str(n1):[] for n1 in range(N1_Neurons)}
+            i_count = 0
+            for sim in sim_json['simulations']:
+                for n1 in range(N1_Neurons):
+                    state_plot = np.load(f)
+                    if sim in plot_simulations:
+                        neurons2_plots[str(n1)].append(state_plot)
+                        i_count+=1
+
+            analog2_plots['neurons'] = neurons2_plots
+
+
     fig_counter = 1
     stop_counter = 0
     for n1 in range(N1_Neurons):
@@ -471,6 +495,9 @@ if(print_l1_membrana and print_l1_state):
         for time_plot in analog_plots['times']:
             state_plot = analog_plots['neurons'][str(n1)][i_count]
             plt.plot(time_plot, state_plot)
+            if(print_l1_threshold):
+                state2_plot = analog2_plots['neurons'][str(n1)][i_count]
+                plt.plot(time_plot, state2_plot)
             i_count+=1
 
         if (n1 % 4 == 3):
